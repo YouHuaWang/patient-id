@@ -2,7 +2,7 @@
 <resources>
     <!-- Primary Button Style -->
     <style name="PrimaryButton" parent="Widget.AppCompat.Button">
-        <item name="android:background">@drawable/button_primary_selector</item>
+        <item name="android:background">@drawable/btn_primary_background</item>
         <item name="android:textColor">#FFFFFF</item>
         <item name="android:textStyle">bold</item>
         <item name="android:elevation">4dp</item>
@@ -11,7 +11,7 @@
 
     <!-- Secondary Button Style -->
     <style name="SecondaryButton" parent="Widget.AppCompat.Button">
-        <item name="android:background">@drawable/button_secondary_selector</item>
+        <item name="android:background">@drawable/btn_secondary_background</item>
         <item name="android:textColor">#3498DB</item>
         <item name="android:textStyle">bold</item>
         <item name="android:elevation">2dp</item>
@@ -20,8 +20,8 @@
 
     <!-- Accent Button Style -->
     <style name="AccentButton" parent="Widget.AppCompat.Button">
-        <item name="android:background">@drawable/button_accent_selector</item>
-        <item name="android:textColor">#E67E22</item>
+        <item name="android:background">@drawable/btn_accent_background</item>
+        <item name="android:textColor">#FFFFFF</item>
         <item name="android:textStyle">normal</item>
         <item name="android:elevation">2dp</item>
         <item name="android:stateListAnimator">@null</item>

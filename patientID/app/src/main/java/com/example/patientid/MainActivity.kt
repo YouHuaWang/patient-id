@@ -29,6 +29,10 @@ import android.util.Log
 import android.view.View
 import android.app.ProgressDialog
 import androidx.core.app.ActivityCompat
+import android.widget.LinearLayout
+import android.content.Context
+import android.content.SharedPreferences
+import androidx.appcompat.app.AlertDialog
 
 data class PatientInfo(
     val name: String,
@@ -44,6 +48,10 @@ class MainActivity : AppCompatActivity() {
         private const val RECORD_AUDIO_PERMISSION_REQUEST = 1
         private const val CAMERA_PERMISSION_REQUEST = 2
         private const val TTS_UTTERANCE_ID = "patient_verification"
+        private const val PREFS_NAME = "PatientIDPrefs"
+        private const val KEY_LANGUAGE = "selected_language"
+        private const val LANG_CHINESE = "zh"
+        private const val LANG_ENGLISH = "en"
     }
 
     // UI Components
@@ -52,6 +60,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnTakePhoto: Button
     private lateinit var btnSelectImage: Button
     private lateinit var btnReprocessImage: Button
+    private lateinit var llPlaceholder: LinearLayout
+    private lateinit var btnLanguage: Button
 
     // Speech & Recognition
     private var tts: TextToSpeech? = null
@@ -64,13 +74,34 @@ class MainActivity : AppCompatActivity() {
     private var progressDialog: ProgressDialog? = null
     private var isProcessing = false
 
+    // Language Support
+    private lateinit var prefs: SharedPreferences
+    private var currentLanguage: String = LANG_CHINESE
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // 初始化語言設定
+        prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        currentLanguage = prefs.getString(KEY_LANGUAGE, LANG_CHINESE) ?: LANG_CHINESE
+        updateLocale(currentLanguage)
+
         setContentView(R.layout.activity_main)
 
         initializeUI()
         requestPermissions()
         initializeServices()
+    }
+
+    private fun updateLocale(language: String) {
+        val locale = when (language) {
+            LANG_ENGLISH -> Locale.ENGLISH
+            else -> Locale.TRADITIONAL_CHINESE
+        }
+
+        val config = resources.configuration
+        config.setLocale(locale)
+        resources.updateConfiguration(config, resources.displayMetrics)
     }
 
     private fun initializeUI() {
@@ -79,13 +110,64 @@ class MainActivity : AppCompatActivity() {
         btnTakePhoto = findViewById(R.id.btnTakePhoto)
         btnSelectImage = findViewById(R.id.btnSelectImage)
         btnReprocessImage = findViewById(R.id.btnReprocessImage)
+        llPlaceholder = findViewById(R.id.llPlaceholder)
+        btnLanguage = findViewById(R.id.btnLanguage)
 
         btnTakePhoto.setOnClickListener { handleTakePhoto() }
         btnSelectImage.setOnClickListener { handleSelectImage() }
         btnReprocessImage.setOnClickListener { reprocessCurrentImage() }
+        btnLanguage.setOnClickListener { showLanguageDialog() }
 
         // 初始狀態下隱藏重新處理按鈕
         btnReprocessImage.visibility = View.GONE
+
+        // 更新UI文字
+        updateUITexts()
+    }
+
+    private fun updateUITexts() {
+        when (currentLanguage) {
+            LANG_ENGLISH -> {
+                btnTakePhoto.text = "📷 Take Photo"
+                btnSelectImage.text = "🖼️ Select Image"
+                btnReprocessImage.text = "🔄 Reprocess"
+                btnLanguage.text = "🌐 中文"
+                textResult.text = "Waiting for image recognition..."
+                findViewById<TextView>(R.id.tvTitle).text = "Patient Verification System"
+                findViewById<TextView>(R.id.tvResultHeader).text = "Recognition Result"
+            }
+            else -> {
+                btnTakePhoto.text = "📷 拍攝醫令單"
+                btnSelectImage.text = "🖼️ 選擇圖片"
+                btnReprocessImage.text = "🔄 重新分析"
+                btnLanguage.text = "🌐 English"
+                textResult.text = "等待圖片識別..."
+                findViewById<TextView>(R.id.tvTitle).text = "病患身份驗證系統"
+                findViewById<TextView>(R.id.tvResultHeader).text = "識別結果"
+            }
+        }
+    }
+
+    private fun showLanguageDialog() {
+        val languages = if (currentLanguage == LANG_CHINESE) {
+            arrayOf("繁體中文", "English")
+        } else {
+            arrayOf("Traditional Chinese", "English")
+        }
+
+        val builder = AlertDialog.Builder(this)
+        builder.setTitle(if (currentLanguage == LANG_CHINESE) "選擇語言" else "Select Language")
+        builder.setItems(languages) { _, which ->
+            val newLanguage = if (which == 0) LANG_CHINESE else LANG_ENGLISH
+            if (newLanguage != currentLanguage) {
+                currentLanguage = newLanguage
+                prefs.edit().putString(KEY_LANGUAGE, currentLanguage).apply()
+                updateLocale(currentLanguage)
+                updateUITexts()
+                initializeServices() // 重新初始化語音服務以更新語言
+            }
+        }
+        builder.show()
     }
 
     private fun requestPermissions() {
@@ -128,15 +210,24 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun initializeTTS() {
+        tts?.shutdown() // 停止舊的TTS實例
+
         tts = TextToSpeech(this) { status ->
             if (status == TextToSpeech.SUCCESS) {
-                val result = tts?.setLanguage(Locale.TRADITIONAL_CHINESE)
-                if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
-                    Log.w(TAG, "繁體中文不支援，嘗試使用簡體中文")
-                    tts?.setLanguage(Locale.SIMPLIFIED_CHINESE)
+                val locale = when (currentLanguage) {
+                    LANG_ENGLISH -> Locale.US
+                    else -> Locale.TRADITIONAL_CHINESE
                 }
 
-                tts?.setSpeechRate(0.8f) // 稍微慢一點以確保清晰度
+                val result = tts?.setLanguage(locale)
+                if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                    if (currentLanguage == LANG_CHINESE) {
+                        Log.w(TAG, "繁體中文不支援，嘗試使用簡體中文")
+                        tts?.setLanguage(Locale.SIMPLIFIED_CHINESE)
+                    }
+                }
+
+                tts?.setSpeechRate(0.8f)
 
                 tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                     override fun onDone(utteranceId: String?) {
@@ -150,7 +241,7 @@ class MainActivity : AppCompatActivity() {
                     override fun onError(utteranceId: String?) {
                         Log.e(TAG, "TTS 錯誤: $utteranceId")
                         runOnUiThread {
-                            showToast("語音播放錯誤，請重新嘗試")
+                            showToast(if (currentLanguage == LANG_CHINESE) "語音播放錯誤，請重新嘗試" else "TTS error, please try again")
                             resetProcessingState()
                         }
                     }
@@ -164,24 +255,26 @@ class MainActivity : AppCompatActivity() {
                 Log.i(TAG, "TTS 初始化成功")
             } else {
                 Log.e(TAG, "TTS 初始化失敗")
-                showToast("語音系統初始化失敗")
+                showToast(if (currentLanguage == LANG_CHINESE) "語音系統初始化失敗" else "TTS initialization failed")
             }
         }
     }
 
     private fun initializeSpeechRecognizer() {
+        speechRecognizer?.destroy() // 清理舊的實例
+
         if (SpeechRecognizer.isRecognitionAvailable(this)) {
             speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this)
             speechIntent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE, "zh-TW")
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE, if (currentLanguage == LANG_ENGLISH) "en-US" else "zh-TW")
                 putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 5)
                 putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, packageName)
             }
             Log.i(TAG, "語音識別器初始化成功")
         } else {
             Log.e(TAG, "設備不支援語音識別")
-            showToast("此設備不支援語音識別功能")
+            showToast(if (currentLanguage == LANG_CHINESE) "此設備不支援語音識別功能" else "Speech recognition not supported")
         }
     }
 
@@ -196,7 +289,7 @@ class MainActivity : AppCompatActivity() {
         if (intent.resolveActivity(packageManager) != null) {
             takePhotoLauncher.launch(intent)
         } else {
-            showToast("找不到相機應用程式")
+            showToast(if (currentLanguage == LANG_CHINESE) "找不到相機應用程式" else "Camera app not found")
         }
     }
 
@@ -205,21 +298,22 @@ class MainActivity : AppCompatActivity() {
         if (intent.resolveActivity(packageManager) != null) {
             selectImageLauncher.launch(intent)
         } else {
-            showToast("找不到圖片選擇應用程式")
+            showToast(if (currentLanguage == LANG_CHINESE) "找不到圖片選擇應用程式" else "Image picker not found")
         }
     }
 
     private fun reprocessCurrentImage() {
         val drawable = imageView.drawable
         if (drawable != null) {
-            // 從ImageView獲取當前圖片並重新處理
+            imageView.isDrawingCacheEnabled = true
             imageView.buildDrawingCache()
             val bitmap = imageView.drawingCache
             if (bitmap != null) {
                 processImage(bitmap.copy(bitmap.config ?: Bitmap.Config.ARGB_8888, false))
             }
+            imageView.isDrawingCacheEnabled = false
         } else {
-            showToast("請先選擇或拍攝圖片")
+            showToast(if (currentLanguage == LANG_CHINESE) "請先選擇或拍攝圖片" else "Please select or take a photo first")
         }
     }
 
@@ -229,15 +323,15 @@ class MainActivity : AppCompatActivity() {
                 try {
                     val bitmap = result.data?.extras?.get("data") as? Bitmap
                     if (bitmap != null) {
-                        imageView.setImageBitmap(bitmap)
+                        setImageAndHidePlaceholder(bitmap)
                         btnReprocessImage.visibility = View.VISIBLE
                         processImage(bitmap)
                     } else {
-                        showToast("無法獲取拍攝的圖片")
+                        showToast(if (currentLanguage == LANG_CHINESE) "無法獲取拍攝的圖片" else "Unable to get captured image")
                     }
                 } catch (e: Exception) {
                     Log.e(TAG, "處理拍攝圖片時發生錯誤", e)
-                    showToast("處理拍攝圖片時發生錯誤")
+                    showToast(if (currentLanguage == LANG_CHINESE) "處理拍攝圖片時發生錯誤" else "Error processing captured image")
                 }
             }
         }
@@ -248,16 +342,21 @@ class MainActivity : AppCompatActivity() {
                 result.data?.data?.let { uri ->
                     try {
                         val bitmap = getBitmapFromUri(uri)
-                        imageView.setImageBitmap(bitmap)
+                        setImageAndHidePlaceholder(bitmap)
                         btnReprocessImage.visibility = View.VISIBLE
                         processImage(bitmap)
                     } catch (e: Exception) {
                         Log.e(TAG, "處理選擇的圖片時發生錯誤", e)
-                        showToast("處理選擇的圖片時發生錯誤：${e.message}")
+                        showToast(if (currentLanguage == LANG_CHINESE) "處理選擇的圖片時發生錯誤：${e.message}" else "Error processing selected image: ${e.message}")
                     }
                 }
             }
         }
+
+    private fun setImageAndHidePlaceholder(bitmap: Bitmap) {
+        imageView.setImageBitmap(bitmap)
+        llPlaceholder.visibility = View.GONE // 隱藏佔位符
+    }
 
     private fun getBitmapFromUri(uri: Uri): Bitmap {
         return if (Build.VERSION.SDK_INT < 28) {
@@ -276,7 +375,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         isProcessing = true
-        showProgressDialog("正在分析圖片...")
+        showProgressDialog(if (currentLanguage == LANG_CHINESE) "正在分析圖片..." else "Analyzing image...")
 
         try {
             val image = InputImage.fromBitmap(bitmap, 0)
@@ -288,11 +387,11 @@ class MainActivity : AppCompatActivity() {
                 }
                 .addOnFailureListener { exception ->
                     Log.e(TAG, "OCR 處理失敗", exception)
-                    handleOCRFailure(exception.message ?: "未知錯誤")
+                    handleOCRFailure(exception.message ?: if (currentLanguage == LANG_CHINESE) "未知錯誤" else "Unknown error")
                 }
         } catch (e: Exception) {
             Log.e(TAG, "圖片處理發生異常", e)
-            handleOCRFailure("圖片處理異常：${e.message}")
+            handleOCRFailure(if (currentLanguage == LANG_CHINESE) "圖片處理異常：${e.message}" else "Image processing error: ${e.message}")
         }
     }
 
@@ -310,7 +409,12 @@ class MainActivity : AppCompatActivity() {
             Log.i(TAG, "準備播放語音: $speechText")
             speakText(speechText)
         } else {
-            showToast("無法識別病患資訊，請確認圖片包含完整的病歷資料")
+            val message = if (currentLanguage == LANG_CHINESE) {
+                "無法識別病患資訊，請確認圖片包含完整的病歷資料"
+            } else {
+                "Unable to recognize patient information. Please ensure the image contains complete medical record data."
+            }
+            showToast(message)
             Log.w(TAG, "無法從OCR結果提取病患資訊")
         }
     }
@@ -318,23 +422,36 @@ class MainActivity : AppCompatActivity() {
     private fun handleOCRFailure(errorMessage: String) {
         hideProgressDialog()
         resetProcessingState()
-        showToast("圖片識別失敗：$errorMessage")
-        textResult.text = "識別失敗，請重新嘗試"
+        val message = if (currentLanguage == LANG_CHINESE) {
+            "圖片識別失敗：$errorMessage"
+        } else {
+            "Image recognition failed: $errorMessage"
+        }
+        showToast(message)
+        textResult.text = if (currentLanguage == LANG_CHINESE) "識別失敗，請重新嘗試" else "Recognition failed, please try again"
     }
 
     private fun extractPatientInfo(text: String): PatientInfo? {
         Log.d(TAG, "開始解析病患資訊: $text")
 
-        // 更靈活的正則表達式匹配
-        val namePatterns = listOf(
-            Regex("""姓名[:：]?\s*([^\s\n\r]{2,10})"""),
-            Regex("""病患[:：]?\s*([^\s\n\r]{2,10})"""),
-            Regex("""患者[:：]?\s*([^\s\n\r]{2,10})""")
-        )
+        val namePatterns = if (currentLanguage == LANG_ENGLISH) {
+            listOf(
+                Regex("""Name[:：]?\s*([A-Za-z\s]{2,30})"""),
+                Regex("""Patient[:：]?\s*([A-Za-z\s]{2,30})""")
+            )
+        } else {
+            listOf(
+                Regex("""姓名[:：]?\s*([^\s\n\r]{2,10})"""),
+                Regex("""病患[:：]?\s*([^\s\n\r]{2,10})"""),
+                Regex("""患者[:：]?\s*([^\s\n\r]{2,10})""")
+            )
+        }
 
         val birthPatterns = listOf(
             Regex("""出生[:：]?\s*(\d{4}[年/-]\d{1,2}[月/-]\d{1,2}[日]?)"""),
             Regex("""生日[:：]?\s*(\d{4}[年/-]\d{1,2}[月/-]\d{1,2}[日]?)"""),
+            Regex("""Birth[:：]?\s*(\d{4}[年/-]\d{1,2}[月/-]\d{1,2}[日]?)"""),
+            Regex("""DOB[:：]?\s*(\d{4}[年/-]\d{1,2}[月/-]\d{1,2}[日]?)"""),
             Regex("""(\d{4}年\d{1,2}月\d{1,2}日)"""),
             Regex("""(\d{4}/\d{1,2}/\d{1,2})"""),
             Regex("""(\d{4}-\d{1,2}-\d{1,2})""")
@@ -344,13 +461,23 @@ class MainActivity : AppCompatActivity() {
             Regex("""病歷號[:：]?\s*([A-Za-z0-9]{4,15})"""),
             Regex("""病號[:：]?\s*([A-Za-z0-9]{4,15})"""),
             Regex("""編號[:：]?\s*([A-Za-z0-9]{4,15})"""),
-            Regex("""ID[:：]?\s*([A-Za-z0-9]{4,15})""")
+            Regex("""ID[:：]?\s*([A-Za-z0-9]{4,15})"""),
+            Regex("""Medical ID[:：]?\s*([A-Za-z0-9]{4,15})"""),
+            Regex("""Patient ID[:：]?\s*([A-Za-z0-9]{4,15})""")
         )
 
-        val examPatterns = listOf(
-            Regex("""檢查[:：]?\s*([^\s\n\r]{2,20})"""),
-            Regex("""項目[:：]?\s*([^\s\n\r]{2,20})""")
-        )
+        val examPatterns = if (currentLanguage == LANG_ENGLISH) {
+            listOf(
+                Regex("""Exam[:：]?\s*([^\s\n\r]{2,20})"""),
+                Regex("""Test[:：]?\s*([^\s\n\r]{2,20})"""),
+                Regex("""Procedure[:：]?\s*([^\s\n\r]{2,20})""")
+            )
+        } else {
+            listOf(
+                Regex("""檢查[:：]?\s*([^\s\n\r]{2,20})"""),
+                Regex("""項目[:：]?\s*([^\s\n\r]{2,20})""")
+            )
+        }
 
         var name = ""
         var birthDate = ""
@@ -406,26 +533,44 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun buildSpeechText(info: PatientInfo): String {
-        val greeting = when {
-            info.name.contains("先生") -> info.name
-            info.name.contains("小姐") || info.name.contains("女士") -> info.name
-            else -> "${info.name}先生"
-        }
+        return if (currentLanguage == LANG_ENGLISH) {
+            val greeting = if (info.name.contains("Mr.") || info.name.contains("Ms.") || info.name.contains("Mrs.")) {
+                info.name
+            } else {
+                "Mr. ${info.name}"
+            }
 
-        val examText = if (info.examType.isNotEmpty()) {
-            "${info.examType}檢查"
+            val examText = if (info.examType.isNotEmpty()) {
+                "${info.examType} examination"
+            } else {
+                "examination"
+            }
+
+            "${greeting}, hello. You will have an ${examText} shortly. Now let me verify your medical information. " +
+                    "Name: ${info.name}. Date of birth: ${info.birthDate}. Medical ID: ${info.medicalId}. " +
+                    "If the information is correct, please say 'yes' or 'correct'."
         } else {
-            "檢查"
-        }
+            val greeting = when {
+                info.name.contains("先生") -> info.name
+                info.name.contains("小姐") || info.name.contains("女士") -> info.name
+                else -> "${info.name}先生"
+            }
 
-        return "${greeting}您好，等一下將進行${examText}。現在向您核對病歷資訊。" +
-                "姓名為：${info.name}。出生年月日為：${info.birthDate}。病歷號為：${info.medicalId}。" +
-                "如果資料正確，請說「是」或「正確」。"
+            val examText = if (info.examType.isNotEmpty()) {
+                "${info.examType}檢查"
+            } else {
+                "檢查"
+            }
+
+            "${greeting}您好，等一下將進行${examText}。現在向您核對病歷資訊。" +
+                    "姓名為：${info.name}。出生年月日為：${info.birthDate}。病歷號為：${info.medicalId}。" +
+                    "如果資料正確，請說「是」或「正確」。"
+        }
     }
 
     private fun speakText(text: String) {
         if (!isTtsInitialized) {
-            showToast("語音系統尚未準備就緒，請稍候再試")
+            showToast(if (currentLanguage == LANG_CHINESE) "語音系統尚未準備就緒，請稍候再試" else "TTS system not ready, please try again later")
             return
         }
 
@@ -437,7 +582,7 @@ class MainActivity : AppCompatActivity() {
             val result = ttsEngine.speak(text, TextToSpeech.QUEUE_FLUSH, params, TTS_UTTERANCE_ID)
             if (result == TextToSpeech.ERROR) {
                 Log.e(TAG, "TTS 播放失敗")
-                showToast("語音播放失敗")
+                showToast(if (currentLanguage == LANG_CHINESE) "語音播放失敗" else "TTS playback failed")
             } else {
                 Log.i(TAG, "開始播放語音")
             }
@@ -447,13 +592,13 @@ class MainActivity : AppCompatActivity() {
     private fun startSpeechRecognition() {
         if (speechRecognizer == null) {
             Log.e(TAG, "語音識別器未初始化")
-            showToast("語音識別功能不可用")
+            showToast(if (currentLanguage == LANG_CHINESE) "語音識別功能不可用" else "Speech recognition unavailable")
             return
         }
 
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO)
             != PackageManager.PERMISSION_GRANTED) {
-            showToast("缺少錄音權限")
+            showToast(if (currentLanguage == LANG_CHINESE) "缺少錄音權限" else "Missing audio recording permission")
             return
         }
 
@@ -461,7 +606,12 @@ class MainActivity : AppCompatActivity() {
             override fun onReadyForSpeech(params: Bundle?) {
                 Log.d(TAG, "準備接收語音")
                 runOnUiThread {
-                    showToast("請說出「是」或「正確」確認資料")
+                    val message = if (currentLanguage == LANG_CHINESE) {
+                        "請說出「是」或「正確」確認資料"
+                    } else {
+                        "Please say 'yes' or 'correct' to confirm"
+                    }
+                    showToast(message)
                 }
             }
 
@@ -471,43 +621,67 @@ class MainActivity : AppCompatActivity() {
 
                 if (matches != null && matches.isNotEmpty()) {
                     val userResponse = matches[0].trim().lowercase()
-                    val isConfirmed = listOf("是", "正確", "對", "沒錯", "確認", "yes", "correct")
-                        .any { userResponse.contains(it) }
+                    val confirmWords = if (currentLanguage == LANG_ENGLISH) {
+                        listOf("yes", "correct", "right", "ok", "confirm")
+                    } else {
+                        listOf("是", "正確", "對", "沒錯", "確認", "yes", "correct")
+                    }
+
+                    val isConfirmed = confirmWords.any { userResponse.contains(it) }
 
                     if (isConfirmed) {
                         runOnUiThread {
-                            showToast("病患資料核對成功！")
-                            // 這裡可以添加成功後的後續操作
+                            val message = if (currentLanguage == LANG_CHINESE) {
+                                "病患資料核對成功！"
+                            } else {
+                                "Patient information verified successfully!"
+                            }
+                            showToast(message)
                             handleVerificationSuccess()
                         }
                     } else {
                         runOnUiThread {
-                            showToast("請重新確認資料或重新掃描")
+                            val message = if (currentLanguage == LANG_CHINESE) {
+                                "請重新確認資料或重新掃描"
+                            } else {
+                                "Please reconfirm information or rescan"
+                            }
+                            showToast(message)
                         }
                     }
                 } else {
                     runOnUiThread {
-                        showToast("未能識別語音，請再次嘗試")
+                        val message = if (currentLanguage == LANG_CHINESE) {
+                            "未能識別語音，請再次嘗試"
+                        } else {
+                            "Unable to recognize speech, please try again"
+                        }
+                        showToast(message)
                     }
                 }
             }
 
             override fun onError(error: Int) {
                 val errorMessage = when (error) {
-                    SpeechRecognizer.ERROR_AUDIO -> "音訊錯誤"
-                    SpeechRecognizer.ERROR_CLIENT -> "客戶端錯誤"
-                    SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "權限不足"
-                    SpeechRecognizer.ERROR_NETWORK -> "網路錯誤"
-                    SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "網路超時"
-                    SpeechRecognizer.ERROR_NO_MATCH -> "無法匹配"
-                    SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "識別器忙碌"
-                    SpeechRecognizer.ERROR_SERVER -> "伺服器錯誤"
-                    SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "語音超時"
-                    else -> "未知錯誤 ($error)"
+                    SpeechRecognizer.ERROR_AUDIO -> if (currentLanguage == LANG_CHINESE) "音訊錯誤" else "Audio error"
+                    SpeechRecognizer.ERROR_CLIENT -> if (currentLanguage == LANG_CHINESE) "客戶端錯誤" else "Client error"
+                    SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> if (currentLanguage == LANG_CHINESE) "權限不足" else "Insufficient permissions"
+                    SpeechRecognizer.ERROR_NETWORK -> if (currentLanguage == LANG_CHINESE) "網路錯誤" else "Network error"
+                    SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> if (currentLanguage == LANG_CHINESE) "網路超時" else "Network timeout"
+                    SpeechRecognizer.ERROR_NO_MATCH -> if (currentLanguage == LANG_CHINESE) "無法匹配" else "No match"
+                    SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> if (currentLanguage == LANG_CHINESE) "識別器忙碌" else "Recognizer busy"
+                    SpeechRecognizer.ERROR_SERVER -> if (currentLanguage == LANG_CHINESE) "伺服器錯誤" else "Server error"
+                    SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> if (currentLanguage == LANG_CHINESE) "語音超時" else "Speech timeout"
+                    else -> if (currentLanguage == LANG_CHINESE) "未知錯誤 ($error)" else "Unknown error ($error)"
                 }
                 Log.e(TAG, "語音識別錯誤: $errorMessage")
                 runOnUiThread {
-                    showToast("語音識別失敗: $errorMessage，請重新嘗試")
+                    val message = if (currentLanguage == LANG_CHINESE) {
+                        "語音識別失敗: $errorMessage，請重新嘗試"
+                    } else {
+                        "Speech recognition failed: $errorMessage, please try again"
+                    }
+                    showToast(message)
                 }
             }
 
@@ -521,7 +695,6 @@ class MainActivity : AppCompatActivity() {
             }
             override fun onEvent(eventType: Int, params: Bundle?) {}
             override fun onPartialResults(partialResults: Bundle?) {
-                // 可以顯示部分識別結果
                 val partials = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                 Log.d(TAG, "部分識別結果: $partials")
             }
@@ -532,23 +705,33 @@ class MainActivity : AppCompatActivity() {
             speechRecognizer?.startListening(speechIntent)
         } catch (e: Exception) {
             Log.e(TAG, "啟動語音識別失敗", e)
-            showToast("啟動語音識別失敗")
+            showToast(if (currentLanguage == LANG_CHINESE) "啟動語音識別失敗" else "Failed to start speech recognition")
         }
     }
 
     private fun handleVerificationSuccess() {
         currentPatientInfo?.let { info ->
-            // 這裡可以添加驗證成功後的邏輯
-            // 例如：保存驗證記錄、跳轉到下一個畫面等
             Log.i(TAG, "病患 ${info.name} 身份驗證成功")
 
-            // 顯示成功訊息
-            val successMessage = "病患身份驗證完成\n" +
-                    "姓名：${info.name}\n" +
-                    "出生日期：${info.birthDate}\n" +
-                    "病歷號：${info.medicalId}"
+            val successMessage = if (currentLanguage == LANG_ENGLISH) {
+                "Patient verification completed\n" +
+                        "Name: ${info.name}\n" +
+                        "Date of birth: ${info.birthDate}\n" +
+                        "Medical ID: ${info.medicalId}"
+            } else {
+                "病患身份驗證完成\n" +
+                        "姓名：${info.name}\n" +
+                        "出生日期：${info.birthDate}\n" +
+                        "病歷號：${info.medicalId}"
+            }
 
-            textResult.append("\n\n=== 驗證成功 ===\n$successMessage")
+            val header = if (currentLanguage == LANG_ENGLISH) {
+                "\n\n=== Verification Successful ===\n"
+            } else {
+                "\n\n=== 驗證成功 ===\n"
+            }
+
+            textResult.append("$header$successMessage")
         }
     }
 
@@ -587,7 +770,12 @@ class MainActivity : AppCompatActivity() {
                     Log.i(TAG, "所有權限已獲得")
                     initializeServices()
                 } else {
-                    showToast("應用程式需要相關權限才能正常運作")
+                    val message = if (currentLanguage == LANG_CHINESE) {
+                        "應用程式需要相關權限才能正常運作"
+                    } else {
+                        "App requires permissions to function properly"
+                    }
+                    showToast(message)
                 }
             }
         }
@@ -607,7 +795,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onPause() {
         super.onPause()
-        // 停止語音相關服務以節省資源
         tts?.stop()
         speechRecognizer?.stopListening()
     }
