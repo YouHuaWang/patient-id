@@ -1,38 +1,39 @@
 package com.example.patientid
 
 import android.app.Activity
+import android.app.ProgressDialog
+import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.ImageDecoder
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
 import android.provider.MediaStore
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
-import android.widget.Button
-import android.widget.ImageView
-import android.widget.TextView
-import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
-import com.google.mlkit.vision.common.InputImage
-import com.google.mlkit.vision.text.chinese.ChineseTextRecognizerOptions
-import com.google.mlkit.vision.text.TextRecognition
-import java.util.*
 import android.util.Log
 import android.view.View
-import android.app.ProgressDialog
-import androidx.core.app.ActivityCompat
-import android.widget.LinearLayout
-import android.content.Context
-import android.content.SharedPreferences
+import android.widget.*
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.chinese.ChineseTextRecognizerOptions
+import java.io.File
+import java.io.IOException
+import java.text.SimpleDateFormat
+import java.util.*
 
 data class PatientInfo(
     val name: String,
@@ -42,6 +43,7 @@ data class PatientInfo(
 )
 
 class MainActivity : AppCompatActivity() {
+    private var photoUri: Uri? = null   // 🔹 全域變數，拍照 & 回傳結果共用
 
     companion object {
         private const val TAG = "PatientID"
@@ -285,12 +287,32 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
+        // 建立一個暫存檔案
+        val photoFile = createImageFile()
+        photoUri = FileProvider.getUriForFile(
+            this,
+            "${packageName}.fileprovider",  // 這裡要跟 AndroidManifest.xml 的 provider 一致
+            photoFile
+        )
+
         val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+        intent.putExtra(MediaStore.EXTRA_OUTPUT, photoUri) // ✅ 指定輸出路徑
         if (intent.resolveActivity(packageManager) != null) {
             takePhotoLauncher.launch(intent)
         } else {
             showToast(if (currentLanguage == LANG_CHINESE) "找不到相機應用程式" else "Camera app not found")
         }
+    }
+
+    @Throws(IOException::class)
+    private fun createImageFile(): File {
+        val timeStamp: String = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+        val storageDir: File? = getExternalFilesDir(Environment.DIRECTORY_PICTURES)
+        return File.createTempFile(
+            "JPEG_${timeStamp}_", /* prefix */
+            ".jpg",              /* suffix */
+            storageDir           /* directory */
+        )
     }
 
     private fun handleSelectImage() {
@@ -321,8 +343,17 @@ class MainActivity : AppCompatActivity() {
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == Activity.RESULT_OK) {
                 try {
-                    val bitmap = result.data?.extras?.get("data") as? Bitmap
-                    if (bitmap != null) {
+                    // 直接從 photoUri 讀取完整解析度圖片
+                    if (photoUri != null) {
+                        val bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                            // Android 9+ 用 ImageDecoder
+                            val source = ImageDecoder.createSource(contentResolver, photoUri!!)
+                            ImageDecoder.decodeBitmap(source)
+                        } else {
+                            // 舊版用 MediaStore
+                            MediaStore.Images.Media.getBitmap(contentResolver, photoUri!!)
+                        }
+
                         setImageAndHidePlaceholder(bitmap)
                         btnReprocessImage.visibility = View.VISIBLE
                         processImage(bitmap)
