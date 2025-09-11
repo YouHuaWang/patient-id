@@ -34,6 +34,7 @@ import java.io.File
 import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.*
+import com.google.mlkit.vision.text.Text
 
 data class PatientInfo(
     val name: String,
@@ -399,6 +400,17 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // optional: 放在 class 內，讓全文可供其他地方使用
+    private var lastOcrFullText: String = ""
+    private val TAG = "MainActivity"
+
+    // 新的結構（可選）
+    data class CombinedOCRResult(
+        val fullText: String,
+        val fieldsLine: Map<String, String>,
+        val fieldsBlock: Map<String, String>
+    )
+
     private fun processImage(bitmap: Bitmap) {
         if (isProcessing) {
             Log.w(TAG, "圖片處理中，忽略重複請求")
@@ -414,7 +426,50 @@ class MainActivity : AppCompatActivity() {
 
             recognizer.process(image)
                 .addOnSuccessListener { visionText ->
-                    handleOCRSuccess(visionText.text)
+                    // ✅ OCR 全文
+                    val fullText = visionText.text ?: ""
+                    lastOcrFullText = fullText
+
+                    // ✅ OCR 欄位抽取（逐行）
+                    val fieldsLine = extractMedicalFormFields(visionText)
+
+                    // ✅ OCR 欄位抽取（區塊）
+                    val fieldsBlock = extractMedicalFormFieldsByBlock(visionText)
+
+                    // ✅ OCR 欄位抽取（自訂規則）
+                    val fieldsCustom = extractMedicalFormFieldsByCustom(fullText)
+
+                    // ✅ 檢查部位（代碼合併版，已過濾雜訊）
+                    val examItems = extractExamItems(fullText)
+
+                    // ✅ 建立結果
+                    val result = CombinedOCRResult(fullText, fieldsLine, fieldsBlock)
+
+                    /// === 格式化輸出 ===
+                    val sb = StringBuilder()
+                    sb.append("📄 OCR 全文:\n")
+                    sb.append(fullText.ifEmpty { "(無文字辨識結果)" })
+                    sb.append("\n\n")
+
+                    sb.append("👤 抽取欄位（逐行）:\n")
+                    if (fieldsLine.isEmpty()) sb.append("（無）\n")
+                    fieldsLine.forEach { (k, v) -> sb.append("$k: $v\n") }
+                    sb.append("\n")
+
+                    sb.append("🧩 抽取欄位（區塊）:\n")
+                    if (fieldsBlock.isEmpty()) sb.append("（無）\n")
+                    fieldsBlock.forEach { (k, v) -> sb.append("$k: $v\n") }
+                    sb.append("\n")
+
+                    sb.append("🩻 檢查部位（自訂規則）:\n")
+                    if (fieldsCustom["檢查部位"].isNullOrEmpty()) sb.append("（無）\n")
+                    else sb.append(fieldsCustom["檢查部位"]).append("\n\n")
+
+                    sb.append("📑 檢查部位（代碼合併版）:\n")
+                    if (examItems.isEmpty()) sb.append("（無）\n")
+                    else examItems.forEach { sb.append(it).append("\n") }
+
+                    handleOCRSuccess(sb.toString())
                 }
                 .addOnFailureListener { exception ->
                     Log.e(TAG, "OCR 處理失敗", exception)
@@ -424,6 +479,191 @@ class MainActivity : AppCompatActivity() {
             Log.e(TAG, "圖片處理發生異常", e)
             handleOCRFailure(if (currentLanguage == LANG_CHINESE) "圖片處理異常：${e.message}" else "Image processing error: ${e.message}")
         }
+    }
+
+    /**
+     * 🔎 從 OCR 結果中抽取醫令檢查單欄位（逐行）
+     */
+    private fun extractMedicalFormFields(visionText: Text): Map<String, String> {
+        val result = mutableMapOf<String, String>()
+        val lines = visionText.text.split("\n").map { it.trimEnd() }
+
+        for (line in lines) {
+            // 病歷號
+            if (!result.containsKey("病歷號")) {
+                Regex("病歷號[:：]?\\s*([A-Za-z0-9]+)").find(line)?.let {
+                    result["病歷號"] = it.groupValues[1]
+                }
+            }
+
+            // 姓名
+            if (!result.containsKey("姓名")) {
+                Regex("姓名[:：]?\\s*([\\u4e00-\\u9fffA-Za-z]{2,10})").find(line)?.let {
+                    result["姓名"] = it.groupValues[1]
+                }
+            }
+
+            // 性別
+            if (!result.containsKey("性別")) {
+                Regex("性別[:：]?\\s*(男|女|男性|女性)").find(line)?.let {
+                    result["性別"] = it.groupValues[1]
+                }
+            }
+
+            // 生日
+            if (!result.containsKey("生日") && (line.contains("生日") || line.contains("出生"))) {
+                result["生日"] = line.replace(" ", "")
+            }
+        }
+
+        return result
+    }
+
+    /**
+     * 🔎 用區塊方式抽取欄位
+     */
+    private fun extractMedicalFormFieldsByBlock(visionText: Text): Map<String, String> {
+        val result = mutableMapOf<String, String>()
+
+        for (block in visionText.textBlocks) {
+            val blockText = block.text.trim()
+
+            if (blockText.contains("病歷號") && !result.containsKey("病歷號")) {
+                Regex("病歷號[:：]?([A-Za-z0-9]+)").find(blockText)?.let {
+                    result["病歷號"] = it.groupValues[1]
+                }
+            }
+            if (blockText.contains("姓名") && !result.containsKey("姓名")) {
+                Regex("姓名[:：]?([\\u4e00-\\u9fffA-Za-z]{2,10})").find(blockText)?.let {
+                    result["姓名"] = it.groupValues[1]
+                }
+            }
+            if (blockText.contains("性別") && !result.containsKey("性別")) {
+                Regex("性別[:：]?(男|女|男性|女性)").find(blockText)?.let {
+                    result["性別"] = it.groupValues[1]
+                }
+            }
+            if ((blockText.contains("生日") || blockText.contains("出生")) && !result.containsKey("生日")) {
+                result["生日"] = blockText.replace(" ", "")
+            }
+        }
+
+        return result
+    }
+
+    /**
+     * 🔎 從 OCR 全文抽取檢查部位（只保留代碼 + 部位名稱）
+     * 規則：
+     * - 從「列印時間」開始，到「檢查說明」結束
+     * - 代碼行 (如 *340-0020、32017C) 與部位名稱合併
+     * - 忽略流水號 (RA 開頭)
+     * - 忽略雜訊 (kV, mAs, 診斷, 健保...)
+     */
+    private fun extractMedicalFormFieldsByCustom(fullText: String): Map<String, String> {
+        val result = mutableMapOf<String, String>()
+        val lines = fullText.split("\n").map { it.trim() }.filter { it.isNotEmpty() }
+
+        val examParts = mutableListOf<String>()
+        var buffer: String? = null
+        var collecting = false
+
+        val codeRegex = Regex("^\\*?\\d{3,}[A-Za-z0-9-]*$")
+        val codeWithDescRegex = Regex("^\\*?\\d{3,}[A-Za-z0-9-]*\\s+.+") // ✅ 代碼 + 部位同一行
+        val raRegex = Regex("^RA\\d+")
+        val noiseKeywords = listOf("kV", "mAs", "診", "斷", "健保", "醫師", "科別", "檢體")
+
+        for (line in lines) {
+            if (line.contains("列印時間")) {
+                collecting = true
+                continue
+            }
+            if (line.contains("檢查說明")) {
+                collecting = false
+                buffer?.let { examParts.add(it) }
+                buffer = null
+                break
+            }
+
+            if (collecting) {
+                if (noiseKeywords.any { line.contains(it) }) continue
+                if (raRegex.matches(line)) continue
+
+                when {
+                    codeWithDescRegex.matches(line) -> {
+                        // ✅ 代碼 + 部位同一行，直接存入
+                        buffer?.let { examParts.add(it) }
+                        buffer = null
+                        examParts.add(line)
+                    }
+                    codeRegex.matches(line) -> {
+                        // ✅ 純代碼，等待下一行補部位
+                        buffer?.let { examParts.add(it) }
+                        buffer = line
+                    }
+                    buffer != null -> {
+                        // ✅ 拼接部位
+                        buffer += " $line"
+                        examParts.add(buffer!!)
+                        buffer = null
+                    }
+                }
+            }
+        }
+
+        // 收尾
+        buffer?.let { examParts.add(it) }
+
+        if (examParts.isNotEmpty()) {
+            result["檢查部位"] = examParts.joinToString("\n")
+        }
+
+        return result
+    }
+
+    private fun extractExamItems(fullText: String): List<String> {
+        val lines = fullText.split("\n").map { it.trim() }.filter { it.isNotEmpty() }
+
+        val examItems = mutableListOf<String>()
+        var collecting = false
+        var buffer: String? = null
+
+        val codeRegex = Regex("^\\*?\\d{3,}[A-Za-z0-9-]*$")
+        val codeWithDescRegex = Regex("^\\*?\\d{3,}[A-Za-z0-9-]*\\s+.+")
+        val raRegex = Regex("^RA\\d+")
+        val noiseKeywords = listOf("kV", "mAs", "診", "斷", "健保", "醫師", "科別", "檢體")
+
+        for (line in lines) {
+            if (line.contains("列印時間")) {
+                collecting = true
+                continue
+            }
+
+            if (collecting) {
+                if (noiseKeywords.any { line.contains(it) }) continue
+                if (raRegex.matches(line)) continue
+
+                when {
+                    codeWithDescRegex.matches(line) -> {
+                        buffer?.let { examItems.add(it) }
+                        buffer = null
+                        examItems.add(line)
+                    }
+                    codeRegex.matches(line) -> {
+                        buffer?.let { examItems.add(it) }
+                        buffer = line
+                    }
+                    buffer != null -> {
+                        buffer += " $line"
+                        examItems.add(buffer!!)
+                        buffer = null
+                    }
+                }
+            }
+        }
+
+        buffer?.let { examItems.add(it) }
+
+        return examItems
     }
 
     private fun handleOCRSuccess(recognizedText: String) {
