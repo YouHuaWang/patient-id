@@ -1,0 +1,6 @@
+{
+  "Rt Knee AP+Lat": "右膝 前後位 側位",
+  "Lt Knee AP+Lat": "左膝 前後位 側位",
+  "Lower extremities": "下肢",
+  "Femur": "股骨"
+}
