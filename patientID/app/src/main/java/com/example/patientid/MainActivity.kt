@@ -35,6 +35,8 @@ import java.io.File
 import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.*
+import com.example.patientid.utils.MedDict
+import com.example.patientid.utils.ExamTranslator
 
 data class PatientInfo(
     val name: String,
@@ -140,20 +142,20 @@ class MainActivity : AppCompatActivity() {
     private fun updateUITexts() {
         when (currentLanguage) {
             LANG_ENGLISH -> {
-                btnTakePhoto.text = "📷 Take Photo"
-                btnSelectImage.text = "🖼️ Select Image"
-                btnReprocessImage.text = "🔄 Reprocess"
-                btnLanguage.text = "🌐 中文"
+                btnTakePhoto.text = "Take Photo"
+                btnSelectImage.text = "Select Image"
+                btnReprocessImage.text = "Reprocess"
+                btnLanguage.text = "中文"
                 textResult.text = "Waiting for image recognition..."
                 tvTitle.text = "Patient Verification System"
                 tvResultHeader.text = "Recognition Result"
                 tvPlaceholder.text = "Please take or select medical order photo"
             }
             else -> {
-                btnTakePhoto.text = "📷 拍攝醫令單"
-                btnSelectImage.text = "🖼️ 選擇圖片"
-                btnReprocessImage.text = "🔄 重新分析"
-                btnLanguage.text = "🌐 English"
+                btnTakePhoto.text = "拍攝醫令單"
+                btnSelectImage.text = "選擇圖片"
+                btnReprocessImage.text = "重新分析"
+                btnLanguage.text = "English"
                 textResult.text = "等待圖片識別..."
                 tvTitle.text = "病患身份驗證系統"
                 tvResultHeader.text = "識別結果"
@@ -466,9 +468,15 @@ class MainActivity : AppCompatActivity() {
             val fieldsBlock = extractMedicalFormFieldsByBlock(visionText)
             val fieldsCustom = extractMedicalFormFieldsByCustom(fullText)
             val examItems = extractExamItems(fullText)
+            val unifiedExamItems = extractExamItemsUnified(fullText) // 整合版
 
             val sb = StringBuilder()
             if (currentLanguage == LANG_ENGLISH) {
+                sb.append("Examination Items（Combine Version）:\n")
+                if (unifiedExamItems.isEmpty()) sb.append("（None）\n")
+                else unifiedExamItems.forEach { sb.append(it).append("\n") }
+                sb.append("\n")
+
                 sb.append("OCR Full Text:\n")
                 sb.append(fullText.ifEmpty { "(No text recognition result)" })
                 sb.append("\n\n")
@@ -491,6 +499,11 @@ class MainActivity : AppCompatActivity() {
                 if (examItems.isEmpty()) sb.append("(None)\n")
                 else examItems.forEach { sb.append(it).append("\n") }
             } else {
+                sb.append("檢查部位（整合版）:\n")
+                if (unifiedExamItems.isEmpty()) sb.append("（無）\n")
+                else unifiedExamItems.forEach { sb.append(it).append("\n") }
+                sb.append("\n")
+
                 sb.append("OCR 全文:\n")
                 sb.append(fullText.ifEmpty { "(無文字辨識結果)" })
                 sb.append("\n\n")
@@ -519,6 +532,109 @@ class MainActivity : AppCompatActivity() {
             Log.e(TAG, "處理OCR結果時異常", e)
             handleOCRFailure(if (currentLanguage == LANG_CHINESE) "處理識別結果時異常" else "Error processing recognition result")
         }
+    }
+
+    private fun extractExamItemsUnified(fullText: String): Map<String, String> {
+        val result = mutableMapOf<String, String>()
+        val lines: List<String> = fullText.split("\n")
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+
+        // === 病人基本資訊 ===
+        for (line in lines) {
+            if (!result.containsKey("病歷號")) {
+                Regex("病歷號[:：]?\\s*([A-Za-z0-9]+)").find(line)?.let {
+                    result["病歷號"] = it.groupValues[1]
+                }
+            }
+            if (!result.containsKey("姓名")) {
+                Regex("姓名[:：]?\\s*([\\u4e00-\\u9fffA-Za-z]{2,10})").find(line)?.let {
+                    result["姓名"] = it.groupValues[1]
+                }
+            }
+            if (!result.containsKey("性別")) {
+                Regex("性別[:：]?\\s*(男|女|男性|女性)").find(line)?.let {
+                    result["性別"] = it.groupValues[1]
+                }
+            }
+            if (!result.containsKey("生日") && (line.contains("生日") || line.contains("出生"))) {
+                result["生日"] = line.replace(" ", "").replace("<<健保>>", "")
+            }
+        }
+
+        // === 檢查部位（列印時間 → 檢查說明）===
+        val examParts = mutableListOf<String>()
+        var buffer: String? = null
+        var collecting = false
+
+        val codeRegex = Regex("^\\*?\\d{3,}[A-Za-z0-9-]*$")
+        val codeWithDescRegex = Regex("^\\*?\\d{3,}[A-Za-z0-9-]*\\s+.+")
+        val raRegex = Regex("^RA\\d+")
+        val noiseKeywords = listOf("kV", "mAs", "診", "斷", "健保", "醫師", "科別", "檢體")
+
+        for (line in lines) {
+            if (line.contains("列印時間")) {
+                collecting = true
+                continue
+            }
+            if (line.contains("檢查說明")) {
+                collecting = false
+                buffer?.let { examParts.add(it) }
+                buffer = null
+                break
+            }
+
+            if (collecting) {
+                if (noiseKeywords.any { line.contains(it) }) continue
+                if (raRegex.matches(line)) continue
+
+                when {
+                    codeWithDescRegex.matches(line) -> {
+                        buffer?.let { examParts.add(it) }
+                        buffer = null
+                        examParts.add(line)
+                    }
+                    codeRegex.matches(line) -> {
+                        buffer?.let { examParts.add(it) }
+                        buffer = line
+                    }
+                    buffer != null -> {
+                        buffer += " $line"
+                        examParts.add(buffer!!)
+                        buffer = null
+                    }
+                }
+            }
+        }
+        buffer?.let { examParts.add(it) }
+
+        if (examParts.isNotEmpty()) {
+            // 確保格式：代碼 + 部位 + 位置
+            val normalized: List<String> = examParts.map { part ->
+                val tokens = part.split(" ").filter { it.isNotBlank() }
+                if (tokens.size >= 3) {
+                    "${tokens[0]} ${tokens[1]} ${tokens.drop(2).joinToString(" ")}"
+                } else {
+                    part
+                }
+            }
+
+            // === 強制排序 ===
+            val sorted: List<String> = normalized.sortedWith(compareBy(
+                { if (it.startsWith("*")) 0 else 1 },  // *340-xxxx 優先
+                { Regex("\\d+").find(it)?.value?.toIntOrNull() ?: Int.MAX_VALUE } // 再依數字大小
+            ))
+
+            // 翻譯（英文 + 中文）
+            val translated: List<String> = sorted.map { part: String ->
+                ExamTranslator.translateExamPart(part)
+            }
+
+            // 改成「檢查項目」，並換行列出
+            result["檢查項目"] = translated.joinToString("\n")
+        }
+
+        return result
     }
 
     private fun extractMedicalFormFields(visionText: Text): Map<String, String> {
@@ -877,7 +993,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // 顯示語音確認彈跳視窗
+    // 新增：顯示語音確認彈跳視窗
     private fun showSpeechRecognitionDialog() {
         dismissSpeechDialog() // 確保沒有重複的對話框
 
