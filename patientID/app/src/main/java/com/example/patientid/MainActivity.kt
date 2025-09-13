@@ -140,20 +140,20 @@ class MainActivity : AppCompatActivity() {
     private fun updateUITexts() {
         when (currentLanguage) {
             LANG_ENGLISH -> {
-                btnTakePhoto.text = "Take Photo"
-                btnSelectImage.text = "Select Image"
-                btnReprocessImage.text = "Reprocess"
-                btnLanguage.text = "中文"
+                btnTakePhoto.text = "📷 Take Photo"
+                btnSelectImage.text = "🖼️ Select Image"
+                btnReprocessImage.text = "🔄 Reprocess"
+                btnLanguage.text = "🌐 中文"
                 textResult.text = "Waiting for image recognition..."
                 tvTitle.text = "Patient Verification System"
                 tvResultHeader.text = "Recognition Result"
                 tvPlaceholder.text = "Please take or select medical order photo"
             }
             else -> {
-                btnTakePhoto.text = "拍攝醫令單"
-                btnSelectImage.text = "選擇圖片"
-                btnReprocessImage.text = "重新分析"
-                btnLanguage.text = "English"
+                btnTakePhoto.text = "📷 拍攝醫令單"
+                btnSelectImage.text = "🖼️ 選擇圖片"
+                btnReprocessImage.text = "🔄 重新分析"
+                btnLanguage.text = "🌐 English"
                 textResult.text = "等待圖片識別..."
                 tvTitle.text = "病患身份驗證系統"
                 tvResultHeader.text = "識別結果"
@@ -877,7 +877,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // 新增：顯示語音確認彈跳視窗
+    // 顯示語音確認彈跳視窗
     private fun showSpeechRecognitionDialog() {
         dismissSpeechDialog() // 確保沒有重複的對話框
 
