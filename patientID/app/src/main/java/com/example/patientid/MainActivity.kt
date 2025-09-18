@@ -92,6 +92,11 @@ class MainActivity : AppCompatActivity() {
     private var currentLanguage: String = LANG_CHINESE
     private var speechDialog: AlertDialog? = null
 
+
+    // 觸發防抖與狀態旗標
+    private var didStartRecognition = false
+    private var lastSpeechText: String = ""
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -254,8 +259,14 @@ class MainActivity : AppCompatActivity() {
                         override fun onDone(utteranceId: String?) {
                             if (utteranceId == TTS_UTTERANCE_ID) {
                                 runOnUiThread {
-                                    showSpeechRecognitionDialog()
-                                    startSpeechRecognition()
+                                    if (!didStartRecognition) {
+                                        didStartRecognition = true
+                                        // 有些手機 TTS 釋放音訊焦點需要一點點時間
+                                        android.os.Handler(mainLooper).postDelayed({
+                                            showSpeechRecognitionDialog()
+                                            startSpeechRecognition()
+                                        }, 400)
+                                    }
                                 }
                             }
                         }
@@ -810,16 +821,15 @@ class MainActivity : AppCompatActivity() {
         if (patientInfo != null) {
             currentPatientInfo = patientInfo
             val speechText = buildSpeechText(patientInfo)
-            Log.i(TAG, "準備播放語音: $speechText")
             speakText(speechText)
         } else {
-            val message = if (currentLanguage == LANG_CHINESE) {
-                "無法識別病患資訊，請確認圖片包含完整的病歷資料"
+            val fallback = if (currentLanguage == LANG_CHINESE) {
+                "目前無法從影像中明確辨識姓名、生日或病歷號。請在聽到提示音後，口頭說出您的姓名或病歷號以進行確認。"
             } else {
-                "Unable to recognize patient information. Please ensure the image contains complete medical record data."
+                "We couldn't clearly recognize your name, date of birth, or medical ID from the image. After the beep, please state your name or medical ID for verification."
             }
-            showToast(message)
-            Log.w(TAG, "無法從OCR結果提取病患資訊")
+            currentPatientInfo = PatientInfo("未辨識","未辨識","未辨識","")
+            speakText(fallback)
         }
     }
 
@@ -928,67 +938,82 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        return if (name.isNotEmpty() && birthDate.isNotEmpty() && medicalId.isNotEmpty()) {
-            PatientInfo(name, birthDate, medicalId, examType)
+        val hasAny = name.isNotEmpty() || birthDate.isNotEmpty() || medicalId.isNotEmpty() || examType.isNotEmpty()
+        return if (hasAny) {
+            PatientInfo(
+                name = if (name.isNotEmpty()) name else if (currentLanguage == LANG_ENGLISH) "Unknown" else "未辨識",
+                birthDate = if (birthDate.isNotEmpty()) birthDate else if (currentLanguage == LANG_ENGLISH) "Unknown" else "未辨識",
+                medicalId = if (medicalId.isNotEmpty()) medicalId else if (currentLanguage == LANG_ENGLISH) "Unknown" else "未辨識",
+                examType = examType
+            )
         } else {
-            Log.w(TAG, "缺少必要資訊 - 姓名: $name, 出生日期: $birthDate, 病歷號: $medicalId")
             null
         }
     }
 
     private fun buildSpeechText(info: PatientInfo): String {
-        return if (currentLanguage == LANG_ENGLISH) {
-            val greeting = if (info.name.contains("Mr.") || info.name.contains("Ms.") || info.name.contains("Mrs.")) {
-                info.name
-            } else {
-                "Mr. ${info.name}"
-            }
+        val unkZh = "未辨識"
+        val unkEn = "Unknown"
+        val isZh = currentLanguage != LANG_ENGLISH
 
-            val examText = if (info.examType.isNotEmpty()) {
-                "${info.examType} examination"
-            } else {
-                "examination"
-            }
+        val nameKnown = info.name.isNotBlank() && info.name != unkZh && info.name != unkEn
+        val birthKnown = info.birthDate.isNotBlank() && info.birthDate != unkZh && info.birthDate != unkEn
+        val idKnown = info.medicalId.isNotBlank() && info.medicalId != unkZh && info.medicalId != unkEn
 
-            "${greeting}, hello. You will have an ${examText} shortly. Now let me verify your medical information. " +
-                    "Name: ${info.name}. Date of birth: ${info.birthDate}. Medical ID: ${info.medicalId}. " +
-                    "If the information is correct, please say 'yes' or 'correct'."
+        return if (!isZh) {
+            val greeting = if (nameKnown) "Hello ${info.name}." else "Hello."
+            val examText = if (info.examType.isNotEmpty()) "${info.examType} examination" else "examination"
+            val parts = buildList {
+                add("$greeting You will have an $examText shortly. Now let me verify your medical information.")
+                if (nameKnown) add("Name: ${info.name}.")
+                if (birthKnown) add("Date of birth: ${info.birthDate}.")
+                if (idKnown) add("Medical ID: ${info.medicalId}.")
+                add("If the information is correct, please say 'yes' or 'correct'.")
+            }
+            parts.joinToString(" ")
         } else {
-            val greeting = when {
-                info.name.contains("先生") -> info.name
-                info.name.contains("小姐") || info.name.contains("女士") -> info.name
-                else -> "${info.name}先生"
-            }
+            val greetName = if (nameKnown) {
+                when {
+                    info.name.contains("先生") || info.name.contains("小姐") || info.name.contains("女士") -> info.name
+                    else -> "${info.name}先生"
+                }
+            } else "您好"
 
-            val examText = if (info.examType.isNotEmpty()) {
-                "${info.examType}檢查"
-            } else {
-                "檢查"
+            val examText = if (info.examType.isNotEmpty()) "${info.examType}檢查" else "檢查"
+            val parts = buildList {
+                add("$greetName，等一下將進行$examText。現在向您核對病歷資訊。")
+                if (nameKnown) add("姓名為：${info.name}。")
+                if (birthKnown) add("出生年月日為：${info.birthDate}。")
+                if (idKnown) add("病歷號為：${info.medicalId}。")
+                add("如果資料正確，請說「是」或「正確」。")
             }
-
-            "${greeting}您好，等一下將進行${examText}。現在向您核對病歷資訊。" +
-                    "姓名為：${info.name}。出生年月日為：${info.birthDate}。病歷號為：${info.medicalId}。" +
-                    "如果資料正確，請說「是」或「正確」。"
+            parts.joinToString("")
         }
     }
 
+
     private fun speakText(text: String) {
         if (!isTtsInitialized) {
-            showToast(if (currentLanguage == LANG_CHINESE) "語音系統尚未準備就緒，請稍候再試" else "TTS system not ready, please try again later")
+            showToast(if (currentLanguage == LANG_CHINESE) "語音系統尚未準備就緒，改為直接進入聆聽" else "TTS not ready, switching to listening")
+            didStartRecognition = true
+            showSpeechRecognitionDialog()
+            startSpeechRecognition()
             return
         }
+
+        didStartRecognition = false
+        lastSpeechText = text
 
         tts?.let { ttsEngine ->
             val params = Bundle().apply {
                 putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, TTS_UTTERANCE_ID)
             }
-
             val result = ttsEngine.speak(text, TextToSpeech.QUEUE_FLUSH, params, TTS_UTTERANCE_ID)
             if (result == TextToSpeech.ERROR) {
-                Log.e(TAG, "TTS 播放失敗")
-                showToast(if (currentLanguage == LANG_CHINESE) "語音播放失敗" else "TTS playback failed")
-            } else {
-                Log.i(TAG, "開始播放語音")
+                Log.e(TAG, "TTS 播放失敗，直接進入聆聽")
+                didStartRecognition = true
+                showSpeechRecognitionDialog()
+                startSpeechRecognition()
             }
         }
     }
