@@ -37,7 +37,15 @@ object PatientParsing {
             listOf(Regex("""檢查[:：]?\s*([^\s\n\r]{2,20})"""), Regex("""項目[:：]?\s*([^\s\n\r]{2,20})"""))
 
         var name = ""
-        for (p in namePatterns) { val m = p.find(text); if (m != null) { name = m.groupValues[1].trim(); break } }
+        for (p in namePatterns) {
+            val m = p.find(text)
+            if (m != null) {
+                name = m.groupValues[1].trim()
+                // 移除姓名中的特殊符號（如 = 等）
+                name = cleanupNameField(name)
+                break
+            }
+        }
 
         var birth = ""
         for (p in birthPatterns) { val m = p.find(text); if (m != null) { birth = m.groupValues[1].trim(); break } }
@@ -57,5 +65,44 @@ object PatientParsing {
                 examType = exam
             )
         } else null
+    }
+
+    /**
+     * 清理姓名欄位中的特殊符號
+     * 移除可能影響語音播放的符號，如 =、#、*、& 等
+     */
+    private fun cleanupNameField(name: String): String {
+        return name
+            .replace("=", "")          // 移除等號
+            .replace("#", "")          // 移除井號
+            .replace("*", "")          // 移除星號
+            .replace("&", "")          // 移除 & 符號
+            .replace("+", "")          // 移除加號
+            .replace("-", "")          // 移除減號（如果不是姓名的一部分）
+            .replace("_", "")          // 移除底線
+            .replace("|", "")          // 移除豎線
+            .replace("@", "")          // 移除 @ 符號
+            .replace("!", "")          // 移除驚嘆號
+            .replace("?", "")          // 移除問號
+            .replace("%", "")          // 移除百分號
+            .replace("^", "")          // 移除插入符號
+            .replace("~", "")          // 移除波浪號
+            .replace("`", "")          // 移除反引號
+            .replace("[", "")          // 移除左中括號
+            .replace("]", "")          // 移除右中括號
+            .replace("{", "")          // 移除左大括號
+            .replace("}", "")          // 移除右大括號
+            .replace("(", "")          // 移除左小括號
+            .replace(")", "")          // 移除右小括號
+            .replace("<", "")          // 移除小於號
+            .replace(">", "")          // 移除大於號
+            .replace("/", "")          // 移除斜線
+            .replace("\\", "")         // 移除反斜線
+            .replace(".", "")          // 移除句號
+            .replace(",", "")          // 移除逗號
+            .replace(";", "")          // 移除分號
+            .replace("\"", "")         // 移除雙引號
+            .replace("'", "")          // 移除單引號
+            .trim()                    // 去除首尾空白
     }
 }
