@@ -13,11 +13,11 @@ object SpeechText {
             val greeting = if (nameKnown) "Hello ${info.name}." else "Hello."
             val examText = if (info.examType.isNotEmpty()) "${info.examType} examination" else "examination"
             buildList {
-                add("$greeting You will have an $examText shortly. Now let me verify your medical information.")
+                add("$greeting You will have an $examText shortly. Now let me present your medical information.")
                 if (nameKnown) add("Name: ${info.name}.")
                 if (birthKnown) add("Date of birth: ${info.birthDate}.")
                 if (idKnown) add("Medical ID: ${info.medicalId}.")
-                add("If the information is correct, please say 'yes' or 'correct'.")
+                add("Please review on screen and press Confirm or Edit if something is incorrect.")
             }.joinToString(" ")
         } else {
             val greetName = if (nameKnown) {
@@ -28,11 +28,11 @@ object SpeechText {
             } else "您好"
             val examText = if (info.examType.isNotEmpty()) "${info.examType}檢查" else "檢查"
             buildList {
-                add("$greetName，等一下將進行$examText。現在向您核對病歷資訊。")
+                add("$greetName，等一下將進行$examText。現在呈現您的病歷資訊。")
                 if (nameKnown) add("姓名為：${info.name}。")
                 if (birthKnown) add("出生年月日為：${info.birthDate}。")
                 if (idKnown) add("病歷號為：${info.medicalId}。")
-                add("如果資料正確，請說「是」或「正確」。")
+                add("請在畫面上核對並按「確認」，若有錯誤請點「修改」後更正。")
             }.joinToString("")
         }
     }

@@ -60,6 +60,18 @@ class MainActivity : AppCompatActivity() {
         private const val LANG_ENGLISH = "en"
     }
 
+    // === 新增：在 UI Components 區塊加入新元件 ===
+    private lateinit var llVerifyPanel: LinearLayout
+    private lateinit var etName: EditText
+    private lateinit var etBirth: EditText
+    private lateinit var etMedicalId: EditText
+    private lateinit var btnConfirmOK: Button
+    private lateinit var btnEditToggle: Button
+
+    // === 新增：常數旗標，全面停用「語音回覆確認」流程 ===
+    private val USE_VOICE_CONFIRM = false
+
+
     // UI Components
     private lateinit var imageView: ImageView
     private lateinit var textResult: TextView
@@ -71,6 +83,27 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvTitle: TextView
     private lateinit var tvResultHeader: TextView
     private lateinit var tvPlaceholder: TextView
+
+    // 2) 新增：在 UI Components 區塊加入（性別＋標題）
+    private lateinit var tvNameLabel: TextView
+    private lateinit var tvGenderLabel: TextView
+    private lateinit var tvMedicalIdLabel: TextView
+    private lateinit var tvBirthLabel: TextView
+    private lateinit var rgGender: RadioGroup
+    private lateinit var rbMale: RadioButton
+    private lateinit var rbFemale: RadioButton
+    private lateinit var rbOther: RadioButton
+
+    private fun getSelectedGenderText(): String {
+        val id = rgGender.checkedRadioButtonId
+        val text = when (id) {
+            R.id.rbMale -> rbMale.text?.toString() ?: ""
+            R.id.rbFemale -> rbFemale.text?.toString() ?: ""
+            R.id.rbOther -> rbOther.text?.toString() ?: ""
+            else -> ""
+        }
+        return text
+    }
 
     // Core variables
     private var photoUri: Uri? = null
@@ -94,6 +127,9 @@ class MainActivity : AppCompatActivity() {
     private var lastSpeechText: String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // 讓鍵盤彈出時，內容區自動 resize（不會被鍵盤蓋住）
+        window.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
+
         super.onCreate(savedInstanceState)
 
         // Initialize language settings
@@ -156,6 +192,7 @@ class MainActivity : AppCompatActivity() {
     // ====== 其餘內容：完全沿用你現有 MainActivity（未改動邏輯） ======
 
     private fun initializeUI() {
+        // --- 原有 findViewById ---
         imageView = findViewById(R.id.imageView)
         textResult = findViewById(R.id.textResult)
         btnTakePhoto = findViewById(R.id.btnTakePhoto)
@@ -167,15 +204,97 @@ class MainActivity : AppCompatActivity() {
         tvResultHeader = findViewById(R.id.tvResultHeader)
         tvPlaceholder = findViewById(R.id.tvPlaceholder)
 
+        // --- 身份確認區塊與欄位 ---
+        llVerifyPanel = findViewById(R.id.llVerifyPanel)
+        etName = findViewById(R.id.etName)
+        etBirth = findViewById(R.id.etBirth)
+        etMedicalId = findViewById(R.id.etMedicalId)
+        btnConfirmOK = findViewById(R.id.btnConfirmOK)
+        btnEditToggle = findViewById(R.id.btnEditToggle)
+
+        // --- 新增：欄位標題與性別元件 ---
+        tvNameLabel = findViewById(R.id.tvNameLabel)
+        tvGenderLabel = findViewById(R.id.tvGenderLabel)
+        tvMedicalIdLabel = findViewById(R.id.tvMedicalIdLabel)
+        tvBirthLabel = findViewById(R.id.tvBirthLabel)
+        rgGender = findViewById(R.id.rgGender)
+        rbMale = findViewById(R.id.rbMale)
+        rbFemale = findViewById(R.id.rbFemale)
+        rbOther = findViewById(R.id.rbOther)
+
+        // --- 初始 UI 狀態 ---
+        // 文字區塊保留並可捲動（由外層 ScrollView 處理），啟用可選取與多行換行
+        textResult.isClickable = true
+        textResult.isFocusable = true
+        textResult.setTextIsSelectable(true)
+        textResult.setHorizontallyScrolling(false)
+
+        // 身份確認面板預設隱藏；欄位先鎖定（顯示時可按「修改」再開）
+        llVerifyPanel.visibility = View.GONE
+        etName.isEnabled = false
+        etBirth.isEnabled = false
+        etMedicalId.isEnabled = false
+        rgGender.clearCheck()
+
+        // --- 行為：確認＝取用欄位 → 覆寫 currentPatientInfo → 成功流程 ---
+        btnConfirmOK.setOnClickListener {
+            val nameIn = etName.text?.toString()?.trim().orEmpty()
+            val birthIn = etBirth.text?.toString()?.trim().orEmpty()
+            val midIn = etMedicalId.text?.toString()?.trim().orEmpty()
+            val exam = currentPatientInfo?.examType ?: ""
+
+            val unknown = if (currentLanguage == LANG_ENGLISH) "Unknown" else "未辨識"
+            val name = if (nameIn.isEmpty()) unknown else nameIn
+            val birth = if (birthIn.isEmpty()) unknown else birthIn
+            val mid = if (midIn.isEmpty()) unknown else midIn
+
+            currentPatientInfo = com.example.patientid.core.PatientInfo(
+                name, birth, mid, exam
+            )
+            handleVerificationSuccess()
+        }
+
+        // --- 行為：修改鍵＝切換欄位可編輯狀態與文字 ---
+        btnEditToggle.setOnClickListener {
+            val enable = !etName.isEnabled
+            etName.isEnabled = enable
+            etBirth.isEnabled = enable
+            etMedicalId.isEnabled = enable
+            // 性別選項也一併可互動
+            for (i in 0 until rgGender.childCount) rgGender.getChildAt(i).isEnabled = enable
+
+            if (enable) {
+                // 進入可編輯：若欄位是「未辨識/Unknown」→ 自動清空，避免殘留
+                val zh = "未辨識"; val en = "Unknown"
+                if (etName.text?.toString() == zh || etName.text?.toString() == en) etName.setText("")
+                if (etBirth.text?.toString() == zh || etBirth.text?.toString() == en) etBirth.setText("")
+                if (etMedicalId.text?.toString() == zh || etMedicalId.text?.toString() == en) etMedicalId.setText("")
+            }
+
+            btnEditToggle.text = if (enable) {
+                if (currentLanguage == LANG_ENGLISH) "✏️ Editing…" else "✏️ 編輯中…"
+            } else {
+                if (currentLanguage == LANG_ENGLISH) "✏️ Edit" else "✏️ 修改"
+            }
+        }
+
+        // --- 其他按鈕（原行為保留） ---
         btnTakePhoto.setOnClickListener { handleTakePhoto() }
         btnSelectImage.setOnClickListener { handleSelectImage() }
         btnReprocessImage.setOnClickListener { reprocessCurrentImage() }
         btnLanguage.setOnClickListener { showLanguageDialog() }
 
+        // 依你原本邏輯，預設先隱藏重新分析鈕
         btnReprocessImage.visibility = View.GONE
+
+        // 根據目前語系套用字串（會同步更新標題/選項/按鈕與 hint）
         updateUITexts()
     }
 
+
+
+
+    // 4) 語系文字（Label / Hint / 性別）一起更新
     private fun updateUITexts() {
         when (currentLanguage) {
             LANG_ENGLISH -> {
@@ -183,23 +302,61 @@ class MainActivity : AppCompatActivity() {
                 btnSelectImage.text = "Select Image"
                 btnReprocessImage.text = "Reprocess"
                 btnLanguage.text = "中文"
-                textResult.text = "Waiting for image recognition..."
                 tvTitle.text = "Patient Verification System"
                 tvResultHeader.text = "Recognition Result"
                 tvPlaceholder.text = "Please take or select medical order photo"
+
+                btnConfirmOK.text = "✅ Confirm"
+                btnEditToggle.text = if (etName.isEnabled) "✏️ Editing…" else "✏️ Edit"
+
+                // 標題與 hint
+                tvNameLabel.text = "Name"
+                tvGenderLabel.text = "Gender"
+                tvMedicalIdLabel.text = "Medical ID"
+                tvBirthLabel.text = "Date of Birth"
+                etName.hint = "Unknown"
+                etMedicalId.hint = "Unknown"
+                etBirth.hint = "Unknown (YYYY/MM/DD)"
+
+                // 性別選項
+                rbMale.text = "Male"
+                rbFemale.text = "Female"
+                rbOther.text = "Other"
+
+                // 初始結果提示
+                if (textResult.text.isNullOrBlank()) textResult.text = "Waiting for image recognition..."
             }
             else -> {
                 btnTakePhoto.text = "拍攝醫令單"
                 btnSelectImage.text = "選擇圖片"
                 btnReprocessImage.text = "重新分析"
                 btnLanguage.text = "English"
-                textResult.text = "等待圖片識別..."
                 tvTitle.text = "病患身份驗證系統"
                 tvResultHeader.text = "識別結果"
                 tvPlaceholder.text = "請拍攝或選擇醫令單"
+
+                btnConfirmOK.text = "✅ 確認"
+                btnEditToggle.text = if (etName.isEnabled) "✏️ 編輯中…" else "✏️ 修改"
+
+                // 標題與 hint
+                tvNameLabel.text = "姓名"
+                tvGenderLabel.text = "性別"
+                tvMedicalIdLabel.text = "病歷號"
+                tvBirthLabel.text = "出生年月日"
+                etName.hint = "未辨識"
+                etMedicalId.hint = "未辨識"
+                etBirth.hint = "未辨識（YYYY/MM/DD）"
+
+                // 性別選項
+                rbMale.text = "男"
+                rbFemale.text = "女"
+                rbOther.text = "其他"
+
+                if (textResult.text.isNullOrBlank()) textResult.text = "等待圖片識別..."
             }
         }
     }
+
 
     private fun showLanguageDialog() {
         val languages = if (currentLanguage == LANG_CHINESE) arrayOf("繁體中文", "English") else arrayOf("Traditional Chinese", "English")
@@ -251,8 +408,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun initializeServices() {
         initializeTTS()
-        initializeSpeechRecognizer()
+        // 【修改】停用語音辨識初始化
+        // initializeSpeechRecognizer()  // <- 移除或註解掉
     }
+
 
     private fun initializeTTS() {
         try {
@@ -265,40 +424,23 @@ class MainActivity : AppCompatActivity() {
                         if (currentLanguage == LANG_CHINESE) tts?.setLanguage(Locale.SIMPLIFIED_CHINESE)
                     }
                     tts?.setSpeechRate(0.8f)
+
+                    // 【修改】不再於播報結束後啟用語音辨識
                     tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
-                        override fun onDone(utteranceId: String?) {
-                            if (utteranceId == TTS_UTTERANCE_ID) {
-                                runOnUiThread {
-                                    if (!didStartRecognition) {
-                                        didStartRecognition = true
-                                        android.os.Handler(mainLooper).postDelayed({
-                                            showSpeechRecognitionDialog()
-                                            startSpeechRecognition()
-                                        }, 400)
-                                    }
-                                }
-                            }
-                        }
-                        override fun onError(utteranceId: String?) {
-                            Log.e(TAG, "TTS 錯誤: $utteranceId")
-                            runOnUiThread {
-                                dismissSpeechDialog()
-                                showToast(if (currentLanguage == LANG_CHINESE) "語音播放錯誤，請重新嘗試" else "TTS error, please try again")
-                                resetProcessingState()
-                            }
-                        }
-                        override fun onStart(utteranceId: String?) { Log.d(TAG, "TTS 開始播放") }
+                        override fun onDone(utteranceId: String?) { /* no-op: do nothing */ }
+                        override fun onError(utteranceId: String?) { /* 失敗僅提示，不開啟聆聽 */ }
+                        override fun onStart(utteranceId: String?) { }
                     })
                     isTtsInitialized = true
                 } else {
                     runOnUiThread { showToast(if (currentLanguage == LANG_CHINESE) "語音系統初始化失敗" else "TTS initialization failed") }
                 }
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "TTS 初始化異常", e)
+        } catch (_: Exception) {
             showToast(if (currentLanguage == LANG_CHINESE) "語音系統初始化失敗" else "TTS initialization failed")
         }
     }
+
 
     private fun initializeSpeechRecognizer() {
         try {
@@ -474,24 +616,154 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // 5) OCR 成功：塞欄位時若值等於占位詞 → 以 hint 呈現、EditText 內容保持空白
+    // =========================================
+// 1) 生日轉民國年 (YYYY/MM/DD -> 民國YYY/MM/DD)
+//    - 若已含「民國」字樣或看起來像民國年，會盡量保留/修正成標準格式
+// =========================================
+// 生日 → 民國年
+    private fun toRocDateString(input: String?): String {
+        if (input.isNullOrBlank()) return ""
+        val raw = input.trim()
+
+        // 已寫「民國」
+        Regex("""民國\s*(\d{1,3})[./\-年]?(\d{1,2})[./\-月]?(\d{1,2})""").find(raw)?.let { m ->
+            val y = m.groupValues[1].toIntOrNull() ?: return raw
+            val mm = m.groupValues[2].toIntOrNull() ?: return raw
+            val dd = m.groupValues[3].toIntOrNull() ?: return raw
+            return "民國%03d/%02d/%02d".format(y, mm, dd)
+        }
+
+        // 西元 4 位年
+        Regex("""(\d{4})[./\-年]?(\d{1,2})[./\-月]?(\d{1,2})""").find(raw)?.let { m ->
+            val yyyy = m.groupValues[1].toIntOrNull() ?: return raw
+            val mm = m.groupValues[2].toIntOrNull() ?: return raw
+            val dd = m.groupValues[3].toIntOrNull() ?: return raw
+            val roc = yyyy - 1911
+            return if (roc > 0) "民國%03d/%02d/%02d".format(roc, mm, dd) else raw
+        }
+
+        // 2~3 位年（視為民國年，例如 069/01/29）
+        Regex("""(\d{2,3})[./\-年]?(\d{1,2})[./\-月]?(\d{1,2})""").find(raw)?.let { m ->
+            val y = m.groupValues[1].toIntOrNull() ?: return raw
+            val mm = m.groupValues[2].toIntOrNull() ?: return raw
+            val dd = m.groupValues[3].toIntOrNull() ?: return raw
+            return "民國%03d/%02d/%02d".format(y, mm, dd)
+        }
+
+        return raw
+    }
+
+    // =========================================
+// 2) 從整段 OCR 結果字串推斷性別並勾選 RadioGroup
+//    - 支援中英常見字樣
+// =========================================
+    private fun selectGenderFromText(fullText: String) {
+        val t = fullText.lowercase()
+        // 常見關鍵字（含：性別:男 / 女；male/female；M/F）
+        val isMale = Regex("""(性別[:：]?\s*男)\b|(^|[^a-z])male([^a-z]|$)|\bsex[:：]?\s*m\b""").containsMatchIn(t)
+                || Regex("""\b\s*m\b""").containsMatchIn(t) && t.contains("sex") // e.g., Sex: M
+
+        val isFemale = Regex("""(性別[:：]?\s*女)\b|(^|[^a-z])female([^a-z]|$)|\bsex[:：]?\s*f\b""").containsMatchIn(t)
+                || Regex("""\b\s*f\b""").containsMatchIn(t) && t.contains("sex") // e.g., Sex: F
+
+        when {
+            isMale -> rgGender.check(R.id.rbMale)
+            isFemale -> rgGender.check(R.id.rbFemale)
+            else -> {
+                // 偵測不到→保留原狀（不強制選擇）
+                rgGender.clearCheck()
+            }
+        }
+    }
+
+    // 從「原始 OCR 全文」抓生日：先找含 生日/出生 的行，再抓日期
+    private fun extractBirthFromFullText(fullText: String): String? {
+        if (fullText.isBlank()) return null
+        val lines = fullText.split("\n").map { it.trim() }.filter { it.isNotEmpty() }
+
+        // 先找帶標籤的行
+        val labelLines = lines.filter { it.contains("生日") || it.contains("出生") || it.contains("DOB", true) }
+        val datePattern = Regex("""(民國\s*\d{1,3}[./\-]\d{1,2}[./\-]\d{1,2}|\d{4}[./\-]\d{1,2}[./\-]\d{1,2}|\d{2,3}[./\-]\d{1,2}[./\-]\d{1,2})""")
+
+        labelLines.forEach { line ->
+            datePattern.find(line.replace("＝","=").replace("：",":"))?.let { m ->
+                return toRocDateString(m.value)
+            }
+        }
+
+        // 沒抓到就全域找一次日期
+        datePattern.find(fullText)?.let { m -> return toRocDateString(m.value) }
+        return null
+    }
+
+    // OCR 成功：用原始全文抓生日/性別；欄位顯示在「人工核對面板」上
     private fun handleOCRSuccess(recognizedText: String) {
         hideProgressDialog()
         resetProcessingState()
         textResult.text = recognizedText
-        val patientInfo = extractPatientInfo(recognizedText)
+
+        // 先從「原始全文」抽生日與性別（避免格式化後的雜訊）
+        val rawBirth = extractBirthFromFullText(lastOcrFullText)
+        val patientInfo = extractPatientInfo(lastOcrFullText)  // << 改成用原始全文
+
+        fun putField(value: String?, et: EditText, zhHint: String, enHint: String) {
+            val v = (value ?: "").trim()
+            val isPlaceholder = v.isEmpty() || v == "未辨識" || v.equals("Unknown", ignoreCase = true)
+            if (isPlaceholder) {
+                et.setText("")
+                et.hint = if (currentLanguage == LANG_ENGLISH) enHint else zhHint
+            } else {
+                et.setText(v)
+            }
+        }
+
+        llVerifyPanel.visibility = View.VISIBLE
+
         if (patientInfo != null) {
             currentPatientInfo = patientInfo
+
+            // 欄位預設鎖定（按「修改」再開）
+            etName.isEnabled = false; etBirth.isEnabled = false; etMedicalId.isEnabled = false
+            for (i in 0 until rgGender.childCount) rgGender.getChildAt(i).isEnabled = false
+
+            // 姓名/病歷號
+            putField(patientInfo.name, etName, "未辨識", "Unknown")
+            putField(patientInfo.medicalId, etMedicalId, "未辨識", "Unknown")
+
+            // 生日：以「原始全文抓到的 rawBirth」優先；沒有就用 patientInfo 的，最後全部轉民國
+            val birthValue = rawBirth ?: patientInfo.birthDate
+            putField(if (birthValue.isNullOrBlank()) "" else toRocDateString(birthValue),
+                etBirth, "未辨識（民國YYY/MM/DD）", "Unknown (ROC YYY/MM/DD)")
+
+            // 性別：用原始全文判斷
+            selectGenderFromText(lastOcrFullText)
+
+            // 可選播報（不啟動語音聆聽）
             val speechText = buildSpeechText(patientInfo)
             speakText(speechText)
         } else {
+            // 抓不到就讓使用者手動補
+            currentPatientInfo = com.example.patientid.core.PatientInfo("","","","")
+            etName.isEnabled = true; etBirth.isEnabled = true; etMedicalId.isEnabled = true
+            for (i in 0 until rgGender.childCount) rgGender.getChildAt(i).isEnabled = true
+
+            putField("", etName, "未辨識", "Unknown")
+            putField("", etMedicalId, "未辨識", "Unknown")
+            putField(if (rawBirth.isNullOrBlank()) "" else toRocDateString(rawBirth),
+                etBirth, "未辨識（民國YYY/MM/DD）", "Unknown (ROC YYY/MM/DD)")
+            rgGender.clearCheck()
+
             val fallback = if (currentLanguage == LANG_CHINESE)
-                "目前無法從影像中明確辨識姓名、生日或病歷號。請在聽到提示音後，口頭說出您的姓名或病歷號以進行確認。"
+                "目前無法從影像中明確辨識姓名、生日或病歷號，請手動輸入後按「確認」。"
             else
-                "We couldn't clearly recognize your name, date of birth, or medical ID from the image. After the beep, please state your name or medical ID for verification."
-            currentPatientInfo = PatientInfo("未辨識","未辨識","未辨識","")
+                "We couldn't clearly recognize your name, date of birth, or medical ID. Please enter them manually and press Confirm."
             speakText(fallback)
         }
     }
+
+
+
 
     private fun handleOCRFailure(errorMessage: String) {
         hideProgressDialog()
@@ -502,26 +774,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun speakText(text: String) {
-        if (!isTtsInitialized) {
-            showToast(if (currentLanguage == LANG_CHINESE) "語音系統尚未準備就緒，改為直接進入聆聽" else "TTS not ready, switching to listening")
-            didStartRecognition = true
-            showSpeechRecognitionDialog()
-            startSpeechRecognition()
-            return
-        }
-        didStartRecognition = false
+        if (!isTtsInitialized) return
         lastSpeechText = text
-        tts?.let { ttsEngine ->
-            val params = Bundle().apply { putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, TTS_UTTERANCE_ID) }
-            val result = ttsEngine.speak(text, TextToSpeech.QUEUE_FLUSH, params, TTS_UTTERANCE_ID)
-            if (result == TextToSpeech.ERROR) {
-                Log.e(TAG, "TTS 播放失敗，直接進入聆聽")
-                didStartRecognition = true
-                showSpeechRecognitionDialog()
-                startSpeechRecognition()
-            }
-        }
+        tts?.speak(text, TextToSpeech.QUEUE_FLUSH, Bundle(), "patient_verification")
     }
+
 
     private fun showSpeechRecognitionDialog() {
         dismissSpeechDialog()

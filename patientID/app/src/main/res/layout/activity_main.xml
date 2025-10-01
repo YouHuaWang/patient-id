@@ -105,6 +105,7 @@
     </androidx.cardview.widget.CardView>
 
     <!-- Button Container -->
+
     <LinearLayout
         android:id="@+id/llButtons"
         android:layout_width="0dp"
@@ -115,27 +116,36 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
-        <!-- Take Photo button -->
-        <Button
-            android:id="@+id/btnTakePhoto"
-            style="@style/PrimaryButton"
+        <!-- 改成一排兩顆：拍攝 / 選圖 -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="56dp"
-            android:text="📷 拍攝醫令單"
-            android:textSize="16sp"
-            android:layout_marginBottom="8dp" />
+            android:orientation="horizontal">
 
-        <!-- Select Image button -->
-        <Button
-            android:id="@+id/btnSelectImage"
-            style="@style/SecondaryButton"
-            android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:text="🖼️ 選擇圖片"
-            android:textSize="16sp"
-            android:layout_marginBottom="8dp" />
+            <Button
+                android:id="@+id/btnTakePhoto"
+                style="@style/PrimaryButton"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:text="📷 拍攝醫令單"
+                android:textSize="16sp" />
 
-        <!-- Reprocess Image button -->
+            <Space
+                android:layout_width="12dp"
+                android:layout_height="match_parent" />
+
+            <Button
+                android:id="@+id/btnSelectImage"
+                style="@style/SecondaryButton"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:text="🖼️ 選擇圖片"
+                android:textSize="16sp" />
+        </LinearLayout>
+
+        <!-- 重新分析 按鈕保留在下一行 -->
         <Button
             android:id="@+id/btnReprocessImage"
             style="@style/AccentButton"
@@ -143,9 +153,10 @@
             android:layout_height="48dp"
             android:text="🔄 重新分析"
             android:textSize="14sp"
+            android:layout_marginTop="8dp"
             android:visibility="gone" />
-
     </LinearLayout>
+
 
     <!-- Result Container -->
     <androidx.cardview.widget.CardView
@@ -179,24 +190,174 @@
                 android:background="#ECF0F1" />
 
             <!-- Show OCR result -->
+            <!-- Show OCR result + Manual Verify Panel (both scrollable together) -->
+            <!-- Show OCR result + Manual Verify Panel (both scrollable together) -->
             <ScrollView
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
                 android:layout_weight="1"
                 android:fillViewport="true">
 
-                <TextView
-                    android:id="@+id/textResult"
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="等待圖片識別..."
-                    android:textSize="14sp"
-                    android:textColor="#2C3E50"
-                    android:padding="16dp"
-                    android:textIsSelectable="true"
-                    android:lineSpacingExtra="4dp" />
+                    android:orientation="vertical"
+                    android:paddingBottom="16dp">
 
+                    <!-- ✅ 先顯示：身份確認面板（移到最前面） -->
+                    <LinearLayout
+                        android:id="@+id/llVerifyPanel"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:paddingStart="16dp"
+                        android:paddingEnd="16dp"
+                        android:paddingTop="8dp"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:id="@+id/tvVerifyTitle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="請人工核對下列病患資訊"
+                            android:textSize="16sp"
+                            android:textStyle="bold"
+                            android:layout_marginBottom="8dp" />
+
+                        <!-- 姓名 -->
+                        <TextView
+                            android:id="@+id/tvNameLabel"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="姓名"
+                            android:textSize="14sp"
+                            android:textStyle="bold"
+                            android:layout_marginTop="6dp"
+                            android:layout_marginBottom="4dp" />
+                        <EditText
+                            android:id="@+id/etName"
+                            android:layout_width="match_parent"
+                            android:layout_height="48dp"
+                            android:hint="未辨識"
+                            android:singleLine="true"
+                            android:padding="12dp"
+                            android:background="@android:drawable/edit_text" />
+
+                        <!-- 性別 -->
+                        <TextView
+                            android:id="@+id/tvGenderLabel"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="性別"
+                            android:textSize="14sp"
+                            android:textStyle="bold"
+                            android:layout_marginTop="12dp"
+                            android:layout_marginBottom="4dp" />
+                        <RadioGroup
+                            android:id="@+id/rgGender"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal">
+                            <RadioButton
+                                android:id="@+id/rbMale"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="男" />
+                            <RadioButton
+                                android:id="@+id/rbFemale"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="女"
+                                android:layout_marginStart="16dp" />
+                            <RadioButton
+                                android:id="@+id/rbOther"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="其他"
+                                android:layout_marginStart="16dp" />
+                        </RadioGroup>
+
+                        <!-- 病歷號 -->
+                        <TextView
+                            android:id="@+id/tvMedicalIdLabel"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="病歷號"
+                            android:textSize="14sp"
+                            android:textStyle="bold"
+                            android:layout_marginTop="12dp"
+                            android:layout_marginBottom="4dp" />
+                        <EditText
+                            android:id="@+id/etMedicalId"
+                            android:layout_width="match_parent"
+                            android:layout_height="48dp"
+                            android:hint="未辨識"
+                            android:singleLine="true"
+                            android:padding="12dp"
+                            android:background="@android:drawable/edit_text" />
+
+                        <!-- 生日（民國年） -->
+                        <TextView
+                            android:id="@+id/tvBirthLabel"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="出生年月日"
+                            android:textSize="14sp"
+                            android:textStyle="bold"
+                            android:layout_marginTop="12dp"
+                            android:layout_marginBottom="4dp" />
+                        <EditText
+                            android:id="@+id/etBirth"
+                            android:layout_width="match_parent"
+                            android:layout_height="48dp"
+                            android:hint="未辨識（民國YYY/MM/DD）"
+                            android:singleLine="true"
+                            android:padding="12dp"
+                            android:background="@android:drawable/edit_text" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:layout_marginTop="12dp">
+
+                            <Button
+                                android:id="@+id/btnConfirmOK"
+                                android:layout_width="0dp"
+                                android:layout_height="48dp"
+                                android:layout_weight="1"
+                                android:text="✅ 確認" />
+
+                            <Space
+                                android:layout_width="12dp"
+                                android:layout_height="1dp" />
+
+                            <Button
+                                android:id="@+id/btnEditToggle"
+                                android:layout_width="0dp"
+                                android:layout_height="48dp"
+                                android:layout_weight="1"
+                                android:text="✏️ 修改" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <!-- 然後才是：識別結果文字區 -->
+                    <TextView
+                        android:id="@+id/textResult"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="等待圖片識別..."
+                        android:textSize="16sp"
+                        android:textColor="#2C3E50"
+                        android:padding="16dp"
+                        android:textIsSelectable="true"
+                        android:lineSpacingExtra="4dp" />
+                </LinearLayout>
             </ScrollView>
+
+
+
+
 
         </LinearLayout>
 
