@@ -58,7 +58,18 @@ object OcrExtractors {
                 { Regex("\\d+").find(it)?.value?.toIntOrNull() ?: Int.MAX_VALUE }
             ))
             val translated = sorted.map { part -> ExamTranslator.translateExamPart(part) }
-            result["檢查項目"] = translated.joinToString("\n")
+
+// 只保留翻譯結果中的中文部分（假設 ExamTranslator 回傳 "... -> 中文描述"）
+            val onlyChinese = translated.map { t ->
+                if (t.contains("->")) {
+                    t.substringAfter("->").trim()
+                } else {
+                    // fallback: 嘗試過濾掉代碼，只取中文字
+                    Regex("([\u4e00-\u9fff].+)").find(t)?.value ?: t
+                }
+            }
+
+            result["檢查項目"] = onlyChinese.joinToString("\n")
         }
         return result
     }
@@ -151,4 +162,110 @@ object OcrExtractors {
         buffer?.let { examItems.add(it) }
         return examItems
     }
+
+
+
+
+
+
+    // 版面感知的姓名抽取（強化版）：支援「姓名:」「名:」「Name:」「Patient Name:」等
+    fun extractNameSmart(visionText: Text, fullText: String): String? {
+        fun isLabelToken(t: String): Boolean {
+            val s = t.replace("＝","=").replace("：",":")
+            return s.equals("姓名", true) || s.equals("名", true) ||
+                    s.equals("Name", true) || s.equals("Patient", true) ||
+                    s.equals("Patient Name", true) || s.startsWith("PatientName", true)
+        }
+
+        // 1) 先用版面（同一行、標籤右側）
+        for (block in visionText.textBlocks) {
+            for (line in block.lines) {
+                val rawLine = line.text.replace("＝", "=").replace("：", ":").trim()
+                val hasNameLabel = rawLine.contains("姓名") || rawLine.contains("名") ||
+                        rawLine.contains("Name", true) || rawLine.contains("Patient Name", true)
+                if (!hasNameLabel) continue
+
+                val elements = line.elements
+                val labelIdx = elements.indexOfFirst { e ->
+                    val t = e.text.trim()
+                    isLabelToken(t) || t.contains("姓名") || t == "名"
+                }
+                if (labelIdx >= 0) {
+                    val labelRight = elements[labelIdx].boundingBox?.right ?: Int.MIN_VALUE
+
+                    val sb = StringBuilder()
+                    for (i in labelIdx until elements.size) {
+                        val e = elements[i]
+                        val x = e.boundingBox?.left ?: Int.MAX_VALUE
+                        val t = e.text.trim()
+
+                        // 跳過標點
+                        if (t == ":" || t == "：" || t == "=" || t == "＝") continue
+                        // 只收集位於標籤右側
+                        if (x > labelRight) {
+                            // 下個欄位關鍵字就停
+                            val stop = t.contains("性別") || t.contains("出生") || t.contains("生日") ||
+                                    t.contains("病歷號") || t.equals("DOB", true) || t.equals("ID", true)
+                            if (stop) break
+                            sb.append(t)
+                        }
+                    }
+                    val candidate = cleanupNameCandidate(sb.toString())
+                    if (isLikelyName(candidate)) return candidate
+                }
+
+                // 2) 本行只有「姓名:」或「名:」→ 下一行是姓名
+                if (rawLine.matches(Regex("""^(姓名|名)\s*[:＝=：]?\s*$""", RegexOption.IGNORE_CASE))) {
+                    val idx = block.lines.indexOf(line)
+                    if (idx >= 0 && idx + 1 < block.lines.size) {
+                        val next = block.lines[idx + 1].text.trim()
+                        val candidate = cleanupNameCandidate(next)
+                        if (isLikelyName(candidate)) return candidate
+                    }
+                }
+
+                // 3) 同行形式：「姓名:王小明 生日:」或「名=王小明 性別:」
+                Regex("""(姓名|名)\s*[:＝=：]\s*([^\s:：=]+)""").find(rawLine)?.let { m ->
+                    val after = m.groupValues[2]
+                    val candidate = cleanupNameCandidate(after.split(Regex("""(性別|出生|生日|病歷號|DOB|ID)"""))[0])
+                    if (isLikelyName(candidate)) return candidate
+                }
+            }
+        }
+
+        // 4) 全文 fallback：含 lookahead 截斷，加入「名:」
+        val fw = fullText.replace("＝", "=").replace("：", ":")
+        val r = Regex("""(姓名|名)\s*[:=]?\s*([^\s:：=]{1,20}?)\s*(?=(性別|出生|生日|病歷號|DOB|ID|$))""")
+        r.find(fw)?.let { m ->
+            val candidate = cleanupNameCandidate(m.groupValues[2])
+            if (isLikelyName(candidate)) return candidate
+        }
+        // 英文 fallback
+        val rEn = Regex("""(Patient Name|Name)\s*[:=]?\s*([A-Za-z ·・\-]{2,30})\s*(?=(DOB|Birth|ID|Exam|Test|Procedure|$))""", RegexOption.IGNORE_CASE)
+        rEn.find(fw)?.let { m ->
+            val candidate = cleanupNameCandidate(m.groupValues[2])
+            if (isLikelyName(candidate)) return candidate
+        }
+        return null
+    }
+
+
+    // 去噪：保留常見人名合法字元（中文、英文、·、-、空白），去掉其它符號
+    private fun cleanupNameCandidate(s: String): String {
+        if (s.isBlank()) return s
+        val kept = s.replace(Regex("""[^ \u4e00-\u9fffA-Za-z·・\-]"""), "")
+            .replace(Regex("""\s+"""), " ")
+            .trim()
+        return kept
+    }
+
+    // 粗略判斷是否像姓名：無數字，長度合理（中文2~6；英文2~30，允許空白/·/-）
+    private fun isLikelyName(s: String): Boolean {
+        if (s.isBlank()) return false
+        if (s.any { it.isDigit() }) return false
+        val han = Regex("""^[\u4e00-\u9fff·・\-]{2,8}$""")
+        val eng = Regex("""^[A-Za-z][A-Za-z ·・\-]{1,29}$""")
+        return han.matches(s) || eng.matches(s)
+    }
+
 }

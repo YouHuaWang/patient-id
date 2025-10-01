@@ -598,6 +598,12 @@ class MainActivity : AppCompatActivity() {
     private fun handleOCRResult(visionText: Text) {
         try {
             val fullText = visionText.text ?: ""
+            val nameSmart = OcrExtractors.extractNameSmart(visionText, fullText)
+            // ★ 新增：把智慧抓到的姓名記起來，給後續 handleOCRSuccess 覆蓋使用
+            if (!nameSmart.isNullOrBlank()) {
+                lastSmartName = nameSmart
+            }
+
             lastOcrFullText = fullText
 
             val fieldsLine = extractMedicalFormFields(visionText)
@@ -744,77 +750,69 @@ class MainActivity : AppCompatActivity() {
         return null
     }
 
+
+
+    private var lastSmartName: String? = null
+
     // OCR 成功：用原始全文抓生日/性別；欄位顯示在「人工核對面板」上，並把生日(民國)回寫到 currentPatientInfo
     private fun handleOCRSuccess(recognizedText: String) {
         hideProgressDialog()
         resetProcessingState()
         textResult.text = recognizedText
 
-        // 1) 先從「原始全文」抽生日與性別（避免格式化後的雜訊）
-        val rawBirth = extractBirthFromFullText(lastOcrFullText)  // 可能是 069/01/29 或 2024/01/29
-        val rocBirth = if (!rawBirth.isNullOrBlank()) toRocDateString(rawBirth) else ""  // 轉成 民國YYY/MM/DD
+        val rawBirth = extractBirthFromFullText(lastOcrFullText)
+        val rocBirth = if (!rawBirth.isNullOrBlank()) toRocDateString(rawBirth) else ""
 
         // 用原始全文建立 patientInfo
-        val parsed = extractPatientInfo(lastOcrFullText)
+        val parsed0 = extractPatientInfo(lastOcrFullText)
+
+        // ★ 覆蓋姓名：若 smart 版本比較可信（非空、非「未辨識/Unknown」），就取代
+        val betterName = lastSmartName?.takeIf { it.isNotBlank() } ?: ""
+        val parsed = if (parsed0 != null) {
+            parsed0.copy(name = if (betterName.isNotBlank()) betterName else parsed0.name)
+        } else null
 
         fun putField(value: String?, et: EditText, zhHint: String, enHint: String) {
             val v = (value ?: "").trim()
             val isPlaceholder = v.isEmpty() || v == "未辨識" || v.equals("Unknown", ignoreCase = true)
-            if (isPlaceholder) {
-                et.setText("")
-                et.hint = if (currentLanguage == LANG_ENGLISH) enHint else zhHint
-            } else {
-                et.setText(v)
-            }
+            if (isPlaceholder) { et.setText(""); et.hint = if (currentLanguage == LANG_ENGLISH) enHint else zhHint }
+            else et.setText(v)
         }
 
         llVerifyPanel.visibility = View.VISIBLE
 
         if (parsed != null) {
-            // 2) 將「民國生日」寫回 currentPatientInfo（供 TTS 使用）；UI 顯示則移除「民國」
             currentPatientInfo = com.example.patientid.core.PatientInfo(
-                name = parsed.name,
+                name = if (betterName.isNotBlank()) betterName else parsed.name,
                 birthDate = if (rocBirth.isNotBlank()) rocBirth else parsed.birthDate,
                 medicalId = parsed.medicalId,
                 examType = parsed.examType
             )
 
-            // 欄位預設鎖定（按「修改」再開）
             etName.isEnabled = false; etBirth.isEnabled = false; etMedicalId.isEnabled = false
             for (i in 0 until rgGender.childCount) rgGender.getChildAt(i).isEnabled = false
 
-            // 3) 顯示到 UI
-            putField(currentPatientInfo?.name, etName, "未辨識", "Unknown")
             putField(currentPatientInfo?.medicalId, etMedicalId, "未辨識", "Unknown")
+            putField(currentPatientInfo?.name,      etName,      "未辨識", "Unknown")
 
-            // 生日：UI 顯示改用「去掉民國前綴」的版本（如 069/01/29）
             val uiBirth = rocForUi(currentPatientInfo?.birthDate ?: "")
             putField(uiBirth, etBirth, "未辨識（民國YYY/MM/DD）", "Unknown (ROC YYY/MM/DD)")
 
-            // 4) 性別：從原始全文判斷並勾選
             selectGenderFromText(lastOcrFullText)
 
-            // 5) 播報（此時 SpeechText 會把民國字串轉成「69年1月29日」唸出）
             currentPatientInfo?.let { info ->
-                val speechText = com.example.patientid.speechtext.SpeechText.build(
-                    info,
-                    isEnglish = (currentLanguage == LANG_ENGLISH)
-                )
+                val speechText = com.example.patientid.speechtext.SpeechText.build(info, isEnglish = (currentLanguage == LANG_ENGLISH))
                 speakText(speechText)
             }
         } else {
-            // 抓不到就讓使用者手動補
             currentPatientInfo = com.example.patientid.core.PatientInfo("","","","")
             etName.isEnabled = true; etBirth.isEnabled = true; etMedicalId.isEnabled = true
             for (i in 0 until rgGender.childCount) rgGender.getChildAt(i).isEnabled = true
 
-            putField("", etName, "未辨識", "Unknown")
             putField("", etMedicalId, "未辨識", "Unknown")
-
-            // 若全文抓到生日仍顯示（UI 版本去掉民國）
+            putField(betterName, etName, "未辨識", "Unknown")
             val uiBirth = rocForUi(rocBirth)
             putField(uiBirth, etBirth, "未辨識（民國YYY/MM/DD）", "Unknown (ROC YYY/MM/DD)")
-
             rgGender.clearCheck()
 
             val fallback = if (currentLanguage == LANG_CHINESE)

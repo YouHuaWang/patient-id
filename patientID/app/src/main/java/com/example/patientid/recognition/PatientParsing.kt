@@ -5,12 +5,19 @@ import com.example.patientid.core.PatientInfo
 
 object PatientParsing {
     fun extractPatientInfo(text: String, isEnglish: Boolean): PatientInfo? {
-        Log.d("PatientParsing", "開始解析病患資訊")
+        Log.d("PatientParsing", "namePatterns")
 
-        val namePatterns = if (isEnglish)
-            listOf(Regex("""Name[:：]?\s*([A-Za-z\s]{2,30})"""), Regex("""Patient[:：]?\s*([A-Za-z\s]{2,30})"""))
-        else
-            listOf(Regex("""姓名[:：]?\s*([^\s\n\r]{2,10})"""), Regex("""病患[:：]?\s*([^\s\n\r]{2,10})"""), Regex("""患者[:：]?\s*([^\s\n\r]{2,10})"""))
+        // 原 namePatterns 改為「含 lookahead 截斷」並支援全形分隔符 + 「名:」
+        val namePatterns = if (isEnglish) listOf(
+            Regex("""Name[:：＝=]?\s*([A-Za-z ·・\-]{2,30})\s*(?=(DOB|Birth|ID|Patient|Exam|Test|Procedure|$))"""),
+            Regex("""Patient(?:\s*Name)?[:：＝=]?\s*([A-Za-z ·・\-]{2,30})\s*(?=(DOB|Birth|ID|Name|Exam|Test|Procedure|$))""", RegexOption.IGNORE_CASE)
+        ) else listOf(
+            Regex("""姓名[:：＝=]?\s*([^\s\n\r:：=]{1,20}?)\s*(?=(性別|出生|生日|病歷號|編號|ID|檢查|項目|$))"""),
+            Regex("""名[:：＝=]?\s*([^\s\n\r:：=]{1,20}?)\s*(?=(性別|出生|生日|病歷號|編號|ID|檢查|項目|$))"""),
+            Regex("""病患[:：＝=]?\s*([^\s\n\r:：=]{1,20}?)\s*(?=(性別|出生|生日|病歷號|編號|ID|檢查|項目|$))"""),
+            Regex("""患者[:：＝=]?\s*([^\s\n\r:：=]{1,20}?)\s*(?=(性別|出生|生日|病歷號|編號|ID|檢查|項目|$))""")
+        )
+
 
         val birthPatterns = listOf(
             Regex("""出生[:：]?\s*(\d{4}[年/-]\d{1,2}[月/-]\d{1,2}[日]?)"""),
@@ -71,38 +78,11 @@ object PatientParsing {
      * 清理姓名欄位中的特殊符號
      * 移除可能影響語音播放的符號，如 =、#、*、& 等
      */
+    // 清理姓名欄位中的特殊符號（但保留人名常見的「·」「-」「空白」）
     private fun cleanupNameField(name: String): String {
         return name
-            .replace("=", "")          // 移除等號
-            .replace("#", "")          // 移除井號
-            .replace("*", "")          // 移除星號
-            .replace("&", "")          // 移除 & 符號
-            .replace("+", "")          // 移除加號
-            .replace("-", "")          // 移除減號（如果不是姓名的一部分）
-            .replace("_", "")          // 移除底線
-            .replace("|", "")          // 移除豎線
-            .replace("@", "")          // 移除 @ 符號
-            .replace("!", "")          // 移除驚嘆號
-            .replace("?", "")          // 移除問號
-            .replace("%", "")          // 移除百分號
-            .replace("^", "")          // 移除插入符號
-            .replace("~", "")          // 移除波浪號
-            .replace("`", "")          // 移除反引號
-            .replace("[", "")          // 移除左中括號
-            .replace("]", "")          // 移除右中括號
-            .replace("{", "")          // 移除左大括號
-            .replace("}", "")          // 移除右大括號
-            .replace("(", "")          // 移除左小括號
-            .replace(")", "")          // 移除右小括號
-            .replace("<", "")          // 移除小於號
-            .replace(">", "")          // 移除大於號
-            .replace("/", "")          // 移除斜線
-            .replace("\\", "")         // 移除反斜線
-            .replace(".", "")          // 移除句號
-            .replace(",", "")          // 移除逗號
-            .replace(";", "")          // 移除分號
-            .replace("\"", "")         // 移除雙引號
-            .replace("'", "")          // 移除單引號
-            .trim()                    // 去除首尾空白
+            .replace(Regex("""[^ \u4e00-\u9fffA-Za-z·・\-]"""), "") // 只保留 中文/英文/空白/·/-/・
+            .replace(Regex("""\s+"""), " ")
+            .trim()
     }
 }
