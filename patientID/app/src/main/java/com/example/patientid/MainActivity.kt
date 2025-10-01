@@ -47,6 +47,7 @@ import com.example.patientid.recognition.OcrExtractors
 import com.example.patientid.recognition.PatientParsing
 import com.example.patientid.speechtext.SpeechText
 // ===================================
+import android.view.ViewGroup
 
 class MainActivity : AppCompatActivity() {
 
@@ -212,7 +213,7 @@ class MainActivity : AppCompatActivity() {
         btnConfirmOK = findViewById(R.id.btnConfirmOK)
         btnEditToggle = findViewById(R.id.btnEditToggle)
 
-        // --- 新增：欄位標題與性別元件 ---
+        // --- 欄位標題與性別元件 ---
         tvNameLabel = findViewById(R.id.tvNameLabel)
         tvGenderLabel = findViewById(R.id.tvGenderLabel)
         tvMedicalIdLabel = findViewById(R.id.tvMedicalIdLabel)
@@ -235,6 +236,35 @@ class MainActivity : AppCompatActivity() {
         etBirth.isEnabled = false
         etMedicalId.isEnabled = false
         rgGender.clearCheck()
+        for (i in 0 until rgGender.childCount) rgGender.getChildAt(i).isEnabled = false
+
+        // --- 依需求調整面板內的顯示順序：病歷號 → 姓名 → 性別 → 出生年月日 ---
+        // 先把按鈕列抓出來（同一列有 確認／修改）
+        val actionRow = (btnConfirmOK.parent as? View)
+        if (actionRow != null) llVerifyPanel.removeView(actionRow)
+
+        // 先移除要重排的元素，避免重複加入
+        listOf(
+            tvMedicalIdLabel, etMedicalId,
+            tvNameLabel, etName,
+            tvGenderLabel, rgGender,
+            tvBirthLabel, etBirth
+        ).forEach { v ->
+            (v.parent as? ViewGroup)?.removeView(v)
+        }
+
+        // 依指定順序加入
+        llVerifyPanel.addView(tvMedicalIdLabel)
+        llVerifyPanel.addView(etMedicalId)
+        llVerifyPanel.addView(tvNameLabel)
+        llVerifyPanel.addView(etName)
+        llVerifyPanel.addView(tvGenderLabel)
+        llVerifyPanel.addView(rgGender)
+        llVerifyPanel.addView(tvBirthLabel)
+        llVerifyPanel.addView(etBirth)
+
+        // 最後把按鈕列加回去
+        if (actionRow != null) llVerifyPanel.addView(actionRow)
 
         // --- 行為：確認＝取用欄位 → 覆寫 currentPatientInfo → 成功流程 ---
         btnConfirmOK.setOnClickListener {
@@ -260,7 +290,6 @@ class MainActivity : AppCompatActivity() {
             etName.isEnabled = enable
             etBirth.isEnabled = enable
             etMedicalId.isEnabled = enable
-            // 性別選項也一併可互動
             for (i in 0 until rgGender.childCount) rgGender.getChildAt(i).isEnabled = enable
 
             if (enable) {
@@ -290,6 +319,8 @@ class MainActivity : AppCompatActivity() {
         // 根據目前語系套用字串（會同步更新標題/選項/按鈕與 hint）
         updateUITexts()
     }
+
+
 
 
 
@@ -616,6 +647,22 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+
+
+    // 將「民國069/01/29」轉為「069/01/29」；也能把「69/1/29」補零為「069/01/29」
+    private fun rocForUi(input: String?): String {
+        if (input.isNullOrBlank()) return ""
+        val s = input.trim()
+        // 先抓出年/月/日，不論是否有「民國」前綴或不同分隔符
+        val m = Regex("""(?:民國)?\s*(\d{1,3})[./\-年]?(\d{1,2})[./\-月]?(\d{1,2})""").find(s) ?: return s
+        val y = m.groupValues[1].toIntOrNull() ?: return s
+        val mm = m.groupValues[2].toIntOrNull() ?: return s
+        val dd = m.groupValues[3].toIntOrNull() ?: return s
+        return "%03d/%02d/%02d".format(y, mm, dd)
+    }
+
+
+
     // 5) OCR 成功：塞欄位時若值等於占位詞 → 以 hint 呈現、EditText 內容保持空白
     // =========================================
 // 1) 生日轉民國年 (YYYY/MM/DD -> 民國YYY/MM/DD)
@@ -697,15 +744,18 @@ class MainActivity : AppCompatActivity() {
         return null
     }
 
-    // OCR 成功：用原始全文抓生日/性別；欄位顯示在「人工核對面板」上
+    // OCR 成功：用原始全文抓生日/性別；欄位顯示在「人工核對面板」上，並把生日(民國)回寫到 currentPatientInfo
     private fun handleOCRSuccess(recognizedText: String) {
         hideProgressDialog()
         resetProcessingState()
         textResult.text = recognizedText
 
-        // 先從「原始全文」抽生日與性別（避免格式化後的雜訊）
-        val rawBirth = extractBirthFromFullText(lastOcrFullText)
-        val patientInfo = extractPatientInfo(lastOcrFullText)  // << 改成用原始全文
+        // 1) 先從「原始全文」抽生日與性別（避免格式化後的雜訊）
+        val rawBirth = extractBirthFromFullText(lastOcrFullText)  // 可能是 069/01/29 或 2024/01/29
+        val rocBirth = if (!rawBirth.isNullOrBlank()) toRocDateString(rawBirth) else ""  // 轉成 民國YYY/MM/DD
+
+        // 用原始全文建立 patientInfo
+        val parsed = extractPatientInfo(lastOcrFullText)
 
         fun putField(value: String?, et: EditText, zhHint: String, enHint: String) {
             val v = (value ?: "").trim()
@@ -720,28 +770,38 @@ class MainActivity : AppCompatActivity() {
 
         llVerifyPanel.visibility = View.VISIBLE
 
-        if (patientInfo != null) {
-            currentPatientInfo = patientInfo
+        if (parsed != null) {
+            // 2) 將「民國生日」寫回 currentPatientInfo（供 TTS 使用）；UI 顯示則移除「民國」
+            currentPatientInfo = com.example.patientid.core.PatientInfo(
+                name = parsed.name,
+                birthDate = if (rocBirth.isNotBlank()) rocBirth else parsed.birthDate,
+                medicalId = parsed.medicalId,
+                examType = parsed.examType
+            )
 
             // 欄位預設鎖定（按「修改」再開）
             etName.isEnabled = false; etBirth.isEnabled = false; etMedicalId.isEnabled = false
             for (i in 0 until rgGender.childCount) rgGender.getChildAt(i).isEnabled = false
 
-            // 姓名/病歷號
-            putField(patientInfo.name, etName, "未辨識", "Unknown")
-            putField(patientInfo.medicalId, etMedicalId, "未辨識", "Unknown")
+            // 3) 顯示到 UI
+            putField(currentPatientInfo?.name, etName, "未辨識", "Unknown")
+            putField(currentPatientInfo?.medicalId, etMedicalId, "未辨識", "Unknown")
 
-            // 生日：以「原始全文抓到的 rawBirth」優先；沒有就用 patientInfo 的，最後全部轉民國
-            val birthValue = rawBirth ?: patientInfo.birthDate
-            putField(if (birthValue.isNullOrBlank()) "" else toRocDateString(birthValue),
-                etBirth, "未辨識（民國YYY/MM/DD）", "Unknown (ROC YYY/MM/DD)")
+            // 生日：UI 顯示改用「去掉民國前綴」的版本（如 069/01/29）
+            val uiBirth = rocForUi(currentPatientInfo?.birthDate ?: "")
+            putField(uiBirth, etBirth, "未辨識（民國YYY/MM/DD）", "Unknown (ROC YYY/MM/DD)")
 
-            // 性別：用原始全文判斷
+            // 4) 性別：從原始全文判斷並勾選
             selectGenderFromText(lastOcrFullText)
 
-            // 可選播報（不啟動語音聆聽）
-            val speechText = buildSpeechText(patientInfo)
-            speakText(speechText)
+            // 5) 播報（此時 SpeechText 會把民國字串轉成「69年1月29日」唸出）
+            currentPatientInfo?.let { info ->
+                val speechText = com.example.patientid.speechtext.SpeechText.build(
+                    info,
+                    isEnglish = (currentLanguage == LANG_ENGLISH)
+                )
+                speakText(speechText)
+            }
         } else {
             // 抓不到就讓使用者手動補
             currentPatientInfo = com.example.patientid.core.PatientInfo("","","","")
@@ -750,8 +810,11 @@ class MainActivity : AppCompatActivity() {
 
             putField("", etName, "未辨識", "Unknown")
             putField("", etMedicalId, "未辨識", "Unknown")
-            putField(if (rawBirth.isNullOrBlank()) "" else toRocDateString(rawBirth),
-                etBirth, "未辨識（民國YYY/MM/DD）", "Unknown (ROC YYY/MM/DD)")
+
+            // 若全文抓到生日仍顯示（UI 版本去掉民國）
+            val uiBirth = rocForUi(rocBirth)
+            putField(uiBirth, etBirth, "未辨識（民國YYY/MM/DD）", "Unknown (ROC YYY/MM/DD)")
+
             rgGender.clearCheck()
 
             val fallback = if (currentLanguage == LANG_CHINESE)
@@ -761,6 +824,7 @@ class MainActivity : AppCompatActivity() {
             speakText(fallback)
         }
     }
+
 
 
 
@@ -886,16 +950,46 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // 取代原本會 append 到 textResult 的版本：改為叫出彈窗
     private fun handleVerificationSuccess() {
         currentPatientInfo?.let { info ->
-            val successMessage = if (currentLanguage == LANG_ENGLISH)
-                "Patient verification completed\nName: ${info.name}\nDate of birth: ${info.birthDate}\nMedical ID: ${info.medicalId}"
-            else
-                "病患身份驗證完成\n姓名：${info.name}\n出生日期：${info.birthDate}\n病歷號：${info.medicalId}"
-            val header = if (currentLanguage == LANG_ENGLISH) "\n\n=== Verification Successful ===\n" else "\n\n=== 驗證成功 ===\n"
-            textResult.append("$header$successMessage")
+            showVerificationSuccessDialog(info)
         }
     }
+
+    // 新增：驗證成功彈出視窗（中英支援）
+    private fun showVerificationSuccessDialog(info: PatientInfo) {
+        val title = if (currentLanguage == LANG_ENGLISH) "Verification Successful" else "驗證成功"
+        val ok = if (currentLanguage == LANG_ENGLISH) "OK" else "知道了"
+
+        // 生日已在 currentPatientInfo 內是民國格式（例如 民國069/01/29）
+        // 顯示時若你想去掉「民國」兩字，可用你現有的 rocForUi(info.birthDate)
+        val birthForDialog = info.birthDate
+
+        val msg = if (currentLanguage == LANG_ENGLISH) {
+            buildString {
+                append("Patient verification completed\n")
+                append("Name: ${info.name}\n")
+                append("Date of birth: $birthForDialog\n")
+                append("Medical ID: ${info.medicalId}")
+            }
+        } else {
+            buildString {
+                append("病患身份驗證完成\n")
+                append("姓名：${info.name}\n")
+                append("出生日期：$birthForDialog\n")
+                append("病歷號：${info.medicalId}")
+            }
+        }
+
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle(title)
+            .setMessage(msg)
+            .setCancelable(true)
+            .setPositiveButton(ok) { dialog, _ -> dialog.dismiss() }
+            .show()
+    }
+
 
     private fun showProgressDialog(message: String) { hideProgressDialog(); progressDialog = ProgressDialog(this).apply { setMessage(message); setCancelable(false); show() } }
     private fun hideProgressDialog() { progressDialog?.dismiss(); progressDialog = null }
