@@ -26,6 +26,7 @@ object MedDict {
 
         // ====== 常見部位 ======
         "Knee" to "膝",
+        "Ankle" to "踝",
         "Femur" to "股骨",
         "Tibia" to "脛骨",
         "Fibula" to "腓骨",

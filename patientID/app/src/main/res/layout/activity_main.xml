@@ -315,6 +315,27 @@
                             android:padding="12dp"
                             android:background="@android:drawable/edit_text" />
 
+                        <!-- 檢查項目 -->
+                        <TextView
+                            android:id="@+id/tvExamLabel"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="檢查項目"
+                            android:textSize="14sp"
+                            android:textStyle="bold"
+                            android:layout_marginTop="12dp"
+                            android:layout_marginBottom="4dp" />
+
+                        <EditText
+                            android:id="@+id/etExam"
+                            android:layout_width="match_parent"
+                            android:layout_height="48dp"
+                            android:hint="未辨識"
+                            android:singleLine="true"
+                            android:padding="12dp"
+                            android:background="@android:drawable/edit_text" />
+
+
                         <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"

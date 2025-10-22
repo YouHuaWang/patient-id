@@ -62,6 +62,8 @@ class MainActivity : AppCompatActivity() {
         private const val LANG_KOREAN = "ko"
     }
 
+
+
     // === 新增：在 UI Components 區塊加入新元件 ===
     private lateinit var llVerifyPanel: LinearLayout
     private lateinit var etName: EditText
@@ -91,6 +93,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvGenderLabel: TextView
     private lateinit var tvMedicalIdLabel: TextView
     private lateinit var tvBirthLabel: TextView
+
+    private lateinit var tvExamLabel: TextView
+    private lateinit var etExam: EditText
+
     private lateinit var rgGender: RadioGroup
     private lateinit var rbMale: RadioButton
     private lateinit var rbFemale: RadioButton
@@ -222,6 +228,9 @@ class MainActivity : AppCompatActivity() {
         rbFemale = findViewById(R.id.rbFemale)
         rbOther = findViewById(R.id.rbOther)
 
+        tvExamLabel = findViewById(R.id.tvExamLabel)
+        etExam = findViewById(R.id.etExam)
+
         // --- 初始 UI 狀態 ---
         // 文字區塊保留並可捲動（由外層 ScrollView 處理），啟用可選取與多行換行
         textResult.isClickable = true
@@ -234,6 +243,9 @@ class MainActivity : AppCompatActivity() {
         etName.isEnabled = false
         etBirth.isEnabled = false
         etMedicalId.isEnabled = false
+
+        etExam.isEnabled = false
+
         rgGender.clearCheck()
         for (i in 0 until rgGender.childCount) rgGender.getChildAt(i).isEnabled = false
 
@@ -247,7 +259,8 @@ class MainActivity : AppCompatActivity() {
             tvMedicalIdLabel, etMedicalId,
             tvNameLabel, etName,
             tvGenderLabel, rgGender,
-            tvBirthLabel, etBirth
+            tvBirthLabel, etBirth,
+            tvExamLabel, etExam               // ← 新增
         ).forEach { v ->
             (v.parent as? ViewGroup)?.removeView(v)
         }
@@ -262,6 +275,9 @@ class MainActivity : AppCompatActivity() {
         llVerifyPanel.addView(tvBirthLabel)
         llVerifyPanel.addView(etBirth)
 
+        llVerifyPanel.addView(tvExamLabel)   // ← 新增
+        llVerifyPanel.addView(etExam)        // ← 新增
+
         // 最後把按鈕列加回去
         if (actionRow != null) llVerifyPanel.addView(actionRow)
 
@@ -270,12 +286,15 @@ class MainActivity : AppCompatActivity() {
             val nameIn = etName.text?.toString()?.trim().orEmpty()
             val birthIn = etBirth.text?.toString()?.trim().orEmpty()
             val midIn = etMedicalId.text?.toString()?.trim().orEmpty()
-            val exam = currentPatientInfo?.examType ?: ""
+            val examIn = etExam.text?.toString()?.trim().orEmpty()
+
+
 
             val unknown = if (currentLanguage == LANG_ENGLISH) "Unknown" else "未辨識"
             val name = if (nameIn.isEmpty()) unknown else nameIn
             val birth = if (birthIn.isEmpty()) unknown else birthIn
             val mid = if (midIn.isEmpty()) unknown else midIn
+            val exam = if (examIn.isEmpty()) unknown else examIn
 
             currentPatientInfo = com.example.patientid.core.PatientInfo(
                 name, birth, mid, exam
@@ -289,6 +308,7 @@ class MainActivity : AppCompatActivity() {
             etName.isEnabled = enable
             etBirth.isEnabled = enable
             etMedicalId.isEnabled = enable
+            etExam.isEnabled = enable
             for (i in 0 until rgGender.childCount) rgGender.getChildAt(i).isEnabled = enable
 
             if (enable) {
@@ -297,6 +317,7 @@ class MainActivity : AppCompatActivity() {
                 if (etName.text?.toString() == zh || etName.text?.toString() == en) etName.setText("")
                 if (etBirth.text?.toString() == zh || etBirth.text?.toString() == en) etBirth.setText("")
                 if (etMedicalId.text?.toString() == zh || etMedicalId.text?.toString() == en) etMedicalId.setText("")
+                if (etExam.text?.toString() == zh || etExam.text?.toString() == en) etExam.setText("")
             }
 
             btnEditToggle.text = if (enable) {
@@ -349,6 +370,9 @@ class MainActivity : AppCompatActivity() {
 
                 rbMale.text = "Male"; rbFemale.text = "Female"; rbOther.text = "Other"
                 if (textResult.text.isNullOrBlank()) textResult.text = "Waiting for image recognition..."
+
+                tvExamLabel.text = "Examination Items"
+                etExam.hint = "Unknown"
             }
             LANG_KOREAN -> {
                 btnTakePhoto.text = "사진 촬영"
@@ -373,6 +397,9 @@ class MainActivity : AppCompatActivity() {
 
                 rbMale.text = "남"; rbFemale.text = "여"; rbOther.text = "기타"
                 if (textResult.text.isNullOrBlank()) textResult.text = "이미지 인식을 기다리는 중…"
+
+                tvExamLabel.text = "검사 항목"
+                etExam.hint = "인식되지 않음"
             }
             else -> { // 中文
                 btnTakePhoto.text = "拍攝醫令單"
@@ -396,6 +423,10 @@ class MainActivity : AppCompatActivity() {
 
                 rbMale.text = "男"; rbFemale.text = "女"; rbOther.text = "其他"
                 if (textResult.text.isNullOrBlank()) textResult.text = "等待圖片識別..."
+
+                tvExamLabel.text = "檢查項目"
+                etExam.hint = "未辨識"
+
             }
         }
     }
@@ -695,6 +726,12 @@ class MainActivity : AppCompatActivity() {
             val unifiedExamItems = extractExamItemsUnified(fullText)
 
             val sb = StringBuilder()
+            val examFirstLine = (unifiedExamItems["檢查項目"] ?: "")
+                .lineSequence().firstOrNull()?.trim().orEmpty()
+            if (examFirstLine.isNotEmpty()) {
+                etExam.setText(examFirstLine)
+            }
+
             if (currentLanguage == LANG_ENGLISH) {
                 sb.append("Examination Items（Combine Version）:\n")
                 if (unifiedExamItems.isEmpty()) sb.append("（None）\n") else unifiedExamItems.forEach { sb.append(it).append("\n") }
