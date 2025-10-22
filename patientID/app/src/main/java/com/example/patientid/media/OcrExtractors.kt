@@ -5,10 +5,33 @@ import com.google.mlkit.vision.text.Text
 
 object OcrExtractors {
 
+    // 以「一般檢查 / Routine」為錨點，取其下一行開始的連續內容，直到遇到下一個段落標題或終止詞
+    private fun collectRoutineSection(linesIn: List<String>): List<String> {
+        val lines = linesIn.map { it.trim() }.filter { it.isNotEmpty() }
+        val startIdx = lines.indexOfFirst { it.contains("一般檢查") || it.contains("Routine", ignoreCase = true) }
+        if (startIdx < 0 || startIdx + 1 >= lines.size) return emptyList()
+
+        val stopMarkers = listOf(
+            "檢查說明","特殊檢查","說明","備註","影像",
+            "Impression","Finding","Findings","Special","Note","Remark"
+        )
+        val noise = listOf("kV","mAs","診","斷","健保","醫師","科別","檢體")
+
+        val out = mutableListOf<String>()
+        for (i in (startIdx + 1) until lines.size) {
+            val line = lines[i]
+            if (stopMarkers.any { m -> line.contains(m, ignoreCase = true) }) break
+            if (noise.any { n -> line.contains(n, ignoreCase = true) }) continue
+            out.add(line)
+        }
+        return out
+    }
+
     fun extractExamItemsUnified(fullText: String): Map<String, String> {
         val result = mutableMapOf<String, String>()
         val lines = fullText.split("\n").map { it.trim() }.filter { it.isNotEmpty() }
 
+        // 先抓基本欄位（沿用原本邏輯）
         for (line in lines) {
             if (!result.containsKey("病歷號"))
                 Regex("病歷號[:：]?\\s*([A-Za-z0-9]+)").find(line)?.let { result["病歷號"] = it.groupValues[1] }
@@ -20,30 +43,21 @@ object OcrExtractors {
                 result["生日"] = line.replace(" ", "").replace("<<健保>>", "")
         }
 
+        // 🔁 改抓「一般檢查 / Routine」底下的區段
+        val section = collectRoutineSection(lines)
+
         val examParts = mutableListOf<String>()
         var buffer: String? = null
-        var collecting = false
         val codeRegex = Regex("^\\*?\\d{3,}[A-Za-z0-9-]*$")
         val codeWithDescRegex = Regex("^\\*?\\d{3,}[A-Za-z0-9-]*\\s+.+")
         val raRegex = Regex("^RA\\d+")
-        val noise = listOf("kV","mAs","診","斷","健保","醫師","科別","檢體")
 
-        for (line in lines) {
-            if (line.contains("列印時間")) { collecting = true; continue }
-            if (line.contains("檢查說明")) {
-                collecting = false
-                buffer?.let { examParts.add(it) }
-                buffer = null
-                break
-            }
-            if (collecting) {
-                if (noise.any { line.contains(it) }) continue
-                if (raRegex.matches(line)) continue
-                when {
-                    codeWithDescRegex.matches(line) -> { buffer?.let { examParts.add(it) }; buffer = null; examParts.add(line) }
-                    codeRegex.matches(line)        -> { buffer?.let { examParts.add(it) }; buffer = line }
-                    buffer != null                 -> { buffer += " $line"; examParts.add(buffer!!); buffer = null }
-                }
+        for (line in section) {
+            if (raRegex.matches(line)) continue
+            when {
+                codeWithDescRegex.matches(line) -> { buffer?.let { examParts.add(it) }; buffer = null; examParts.add(line) }
+                codeRegex.matches(line)        -> { buffer?.let { examParts.add(it) }; buffer = line }
+                buffer != null                 -> { buffer += " $line"; examParts.add(buffer!!); buffer = null }
             }
         }
         buffer?.let { examParts.add(it) }
@@ -59,20 +73,19 @@ object OcrExtractors {
             ))
             val translated = sorted.map { part -> ExamTranslator.translateExamPart(part) }
 
-// 只保留翻譯結果中的中文部分（假設 ExamTranslator 回傳 "... -> 中文描述"）
+            // 只保留翻譯結果中的中文部分（ExamTranslator 回傳形如 "... -> 中文描述"）
             val onlyChinese = translated.map { t ->
                 if (t.contains("->")) {
                     t.substringAfter("->").trim()
                 } else {
-                    // fallback: 嘗試過濾掉代碼，只取中文字
-                    Regex("([\u4e00-\u9fff].+)").find(t)?.value ?: t
+                    Regex("([\\u4e00-\\u9fff].+)").find(t)?.value ?: t
                 }
             }
-
             result["檢查項目"] = onlyChinese.joinToString("\n")
         }
         return result
     }
+
 
     fun extractMedicalFormFields(visionText: Text): Map<String, String> {
         val result = mutableMapOf<String, String>()
@@ -109,59 +122,56 @@ object OcrExtractors {
     fun extractMedicalFormFieldsByCustom(fullText: String): Map<String, String> {
         val result = mutableMapOf<String, String>()
         val lines = fullText.split("\n").map { it.trim() }.filter { it.isNotEmpty() }
+
+        // 🔁 改抓「一般檢查 / Routine」底下的區段
+        val section = collectRoutineSection(lines)
+
         val examParts = mutableListOf<String>()
         var buffer: String? = null
-        var collecting = false
         val codeRegex = Regex("^\\*?\\d{3,}[A-Za-z0-9-]*$")
         val codeWithDescRegex = Regex("^\\*?\\d{3,}[A-Za-z0-9-]*\\s+.+")
         val raRegex = Regex("^RA\\d+")
-        val noise = listOf("kV","mAs","診","斷","健保","醫師","科別","檢體")
 
-        for (line in lines) {
-            if (line.contains("列印時間")) { collecting = true; continue }
-            if (line.contains("檢查說明")) {
-                collecting = false; buffer?.let { examParts.add(it) }; buffer = null; break
-            }
-            if (collecting) {
-                if (noise.any { line.contains(it) }) continue
-                if (raRegex.matches(line)) continue
-                when {
-                    codeWithDescRegex.matches(line) -> { buffer?.let { examParts.add(it) }; buffer = null; examParts.add(line) }
-                    codeRegex.matches(line)        -> { buffer?.let { examParts.add(it) }; buffer = line }
-                    buffer != null                 -> { buffer += " $line"; examParts.add(buffer!!); buffer = null }
-                }
+        for (line in section) {
+            if (raRegex.matches(line)) continue
+            when {
+                codeWithDescRegex.matches(line) -> { buffer?.let { examParts.add(it) }; buffer = null; examParts.add(line) }
+                codeRegex.matches(line)        -> { buffer?.let { examParts.add(it) }; buffer = line }
+                buffer != null                 -> { buffer += " $line"; examParts.add(buffer!!); buffer = null }
             }
         }
         buffer?.let { examParts.add(it) }
-        if (examParts.isNotEmpty()) result["檢查部位"] = examParts.joinToString("\n")
+
+        if (examParts.isNotEmpty()) {
+            result["檢查部位"] = examParts.joinToString("\n")
+        }
         return result
     }
 
+
     fun extractExamItems(fullText: String): List<String> {
         val lines = fullText.split("\n").map { it.trim() }.filter { it.isNotEmpty() }
+        // 🔁 改抓「一般檢查 / Routine」底下的區段
+        val section = collectRoutineSection(lines)
+
         val examItems = mutableListOf<String>()
-        var collecting = false
         var buffer: String? = null
         val codeRegex = Regex("^\\*?\\d{3,}[A-Za-z0-9-]*$")
         val codeWithDescRegex = Regex("^\\*?\\d{3,}[A-Za-z0-9-]*\\s+.+")
         val raRegex = Regex("^RA\\d+")
-        val noise = listOf("kV","mAs","診","斷","健保","醫師","科別","檢體")
 
-        for (line in lines) {
-            if (line.contains("列印時間")) { collecting = true; continue }
-            if (collecting) {
-                if (noise.any { line.contains(it) }) continue
-                if (raRegex.matches(line)) continue
-                when {
-                    codeWithDescRegex.matches(line) -> { buffer?.let { examItems.add(it) }; buffer = null; examItems.add(line) }
-                    codeRegex.matches(line)        -> { buffer?.let { examItems.add(it) }; buffer = line }
-                    buffer != null                 -> { buffer += " $line"; examItems.add(buffer!!); buffer = null }
-                }
+        for (line in section) {
+            if (raRegex.matches(line)) continue
+            when {
+                codeWithDescRegex.matches(line) -> { buffer?.let { examItems.add(it) }; buffer = null; examItems.add(line) }
+                codeRegex.matches(line)        -> { buffer?.let { examItems.add(it) }; buffer = line }
+                buffer != null                 -> { buffer += " $line"; examItems.add(buffer!!); buffer = null }
             }
         }
         buffer?.let { examItems.add(it) }
         return examItems
     }
+
 
 
 
@@ -267,5 +277,8 @@ object OcrExtractors {
         val eng = Regex("""^[A-Za-z][A-Za-z ·・\-]{1,29}$""")
         return han.matches(s) || eng.matches(s)
     }
+
+
+
 
 }

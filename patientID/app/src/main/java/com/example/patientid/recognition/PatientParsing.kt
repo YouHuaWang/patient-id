@@ -4,19 +4,28 @@ import android.util.Log
 import com.example.patientid.core.PatientInfo
 
 object PatientParsing {
-    fun extractPatientInfo(text: String, isEnglish: Boolean): PatientInfo? {
+    fun extractPatientInfo(text: String, langCode: String): PatientInfo? {
         Log.d("PatientParsing", "namePatterns")
+        val isEnglish = langCode == "en"
+        val isKorean = langCode == "ko"
 
         // 原 namePatterns 改為「含 lookahead 截斷」並支援全形分隔符 + 「名:」
-        val namePatterns = if (isEnglish) listOf(
-            Regex("""Name[:：＝=]?\s*([A-Za-z ·・\-]{2,30})\s*(?=(DOB|Birth|ID|Patient|Exam|Test|Procedure|$))"""),
-            Regex("""Patient(?:\s*Name)?[:：＝=]?\s*([A-Za-z ·・\-]{2,30})\s*(?=(DOB|Birth|ID|Name|Exam|Test|Procedure|$))""", RegexOption.IGNORE_CASE)
-        ) else listOf(
-            Regex("""姓名[:：＝=]?\s*([^\s\n\r:：=]{1,20}?)\s*(?=(性別|出生|生日|病歷號|編號|ID|檢查|項目|$))"""),
-            Regex("""名[:：＝=]?\s*([^\s\n\r:：=]{1,20}?)\s*(?=(性別|出生|生日|病歷號|編號|ID|檢查|項目|$))"""),
-            Regex("""病患[:：＝=]?\s*([^\s\n\r:：=]{1,20}?)\s*(?=(性別|出生|生日|病歷號|編號|ID|檢查|項目|$))"""),
-            Regex("""患者[:：＝=]?\s*([^\s\n\r:：=]{1,20}?)\s*(?=(性別|出生|生日|病歷號|編號|ID|檢查|項目|$))""")
-        )
+        val namePatterns = when {
+            isEnglish -> listOf(
+                Regex("""Name[:：＝=]?\s*([A-Za-z ·・\-]{2,30})\s*(?=(DOB|Birth|ID|Patient|Exam|Test|Procedure|$))"""),
+                Regex("""Patient(?:\s*Name)?[:：＝=]?\s*([A-Za-z ·・\-]{2,30})\s*(?=(DOB|Birth|ID|Name|Exam|Test|Procedure|$))""", RegexOption.IGNORE_CASE)
+            )
+            isKorean -> listOf(
+                Regex("""이름[:：＝=]?\s*([가-힣·\s\-]{1,20})\s*(?=(성별|생년월일|ID|검사|항목|$))"""),
+                Regex("""환자[:：＝=]?\s*([가-힣·\s\-]{1,20})\s*(?=(성별|생년월일|ID|검사|항목|$))""")
+            )
+            else -> listOf(
+                Regex("""姓名[:：＝=]?\s*([^\s\n\r:：=]{1,20}?)\s*(?=(性別|出生|生日|病歷號|編號|ID|檢查|項目|$))"""),
+                Regex("""名[:：＝=]?\s*([^\s\n\r:：=]{1,20}?)\s*(?=(性別|出生|生日|病歷號|編號|ID|檢查|項目|$))"""),
+                Regex("""病患[:：＝=]?\s*([^\s\n\r:：=]{1,20}?)\s*(?=(性別|出生|生日|病歷號|編號|ID|檢查|項目|$))"""),
+                Regex("""患者[:：＝=]?\s*([^\s\n\r:：=]{1,20}?)\s*(?=(性別|出生|生日|病歷號|編號|ID|檢查|項目|$))""")
+            )
+        }
 
 
         val birthPatterns = listOf(

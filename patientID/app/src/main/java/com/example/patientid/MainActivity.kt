@@ -59,6 +59,7 @@ class MainActivity : AppCompatActivity() {
         private const val KEY_LANGUAGE = "selected_language"
         private const val LANG_CHINESE = "zh"
         private const val LANG_ENGLISH = "en"
+        private const val LANG_KOREAN = "ko"
     }
 
     // === 新增：在 UI Components 區塊加入新元件 ===
@@ -181,14 +182,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun extractPatientInfo(text: String): PatientInfo? {
-        val isEnglish = currentLanguage == LANG_ENGLISH
-        return PatientParsing.extractPatientInfo(text, isEnglish)
+        return PatientParsing.extractPatientInfo(text, currentLanguage)
+    }
+    private fun buildSpeechText(info: PatientInfo): String {
+        return SpeechText.build(info, currentLanguage)
     }
 
-    private fun buildSpeechText(info: PatientInfo): String {
-        val isEnglish = currentLanguage == LANG_ENGLISH
-        return SpeechText.build(info, isEnglish)
-    }
 
     // ====== 其餘內容：完全沿用你現有 MainActivity（未改動邏輯） ======
 
@@ -332,7 +331,7 @@ class MainActivity : AppCompatActivity() {
                 btnTakePhoto.text = "Take Photo"
                 btnSelectImage.text = "Select Image"
                 btnReprocessImage.text = "Reprocess"
-                btnLanguage.text = "中文"
+                btnLanguage.text = "🌐 Language"   // 不寫死中或英，三語都通用
                 tvTitle.text = "Patient Verification System"
                 tvResultHeader.text = "Recognition Result"
                 tvPlaceholder.text = "Please take or select medical order photo"
@@ -340,7 +339,6 @@ class MainActivity : AppCompatActivity() {
                 btnConfirmOK.text = "✅ Confirm"
                 btnEditToggle.text = if (etName.isEnabled) "✏️ Editing…" else "✏️ Edit"
 
-                // 標題與 hint
                 tvNameLabel.text = "Name"
                 tvGenderLabel.text = "Gender"
                 tvMedicalIdLabel.text = "Medical ID"
@@ -349,19 +347,38 @@ class MainActivity : AppCompatActivity() {
                 etMedicalId.hint = "Unknown"
                 etBirth.hint = "Unknown (YYYY/MM/DD)"
 
-                // 性別選項
-                rbMale.text = "Male"
-                rbFemale.text = "Female"
-                rbOther.text = "Other"
-
-                // 初始結果提示
+                rbMale.text = "Male"; rbFemale.text = "Female"; rbOther.text = "Other"
                 if (textResult.text.isNullOrBlank()) textResult.text = "Waiting for image recognition..."
             }
-            else -> {
+            LANG_KOREAN -> {
+                btnTakePhoto.text = "사진 촬영"
+                btnSelectImage.text = "이미지 선택"
+                btnReprocessImage.text = "재분석"
+                btnLanguage.text = "🌐 언어"
+
+                tvTitle.text = "환자 신원 확인 시스템"
+                tvResultHeader.text = "인식 결과"
+                tvPlaceholder.text = "의뢰서 사진을 촬영하거나 선택하세요"
+
+                btnConfirmOK.text = "✅ 확인"
+                btnEditToggle.text = if (etName.isEnabled) "✏️ 편집 중…" else "✏️ 편집"
+
+                tvNameLabel.text = "이름"
+                tvGenderLabel.text = "성별"
+                tvMedicalIdLabel.text = "환자 번호"
+                tvBirthLabel.text = "생년월일"
+                etName.hint = "인식되지 않음"
+                etMedicalId.hint = "인식되지 않음"
+                etBirth.hint = "인식되지 않음 (YYYY/MM/DD)"
+
+                rbMale.text = "남"; rbFemale.text = "여"; rbOther.text = "기타"
+                if (textResult.text.isNullOrBlank()) textResult.text = "이미지 인식을 기다리는 중…"
+            }
+            else -> { // 中文
                 btnTakePhoto.text = "拍攝醫令單"
                 btnSelectImage.text = "選擇圖片"
                 btnReprocessImage.text = "重新分析"
-                btnLanguage.text = "English"
+                btnLanguage.text = "🌐 語言"
                 tvTitle.text = "病患身份驗證系統"
                 tvResultHeader.text = "識別結果"
                 tvPlaceholder.text = "請拍攝或選擇醫令單"
@@ -369,7 +386,6 @@ class MainActivity : AppCompatActivity() {
                 btnConfirmOK.text = "✅ 確認"
                 btnEditToggle.text = if (etName.isEnabled) "✏️ 編輯中…" else "✏️ 修改"
 
-                // 標題與 hint
                 tvNameLabel.text = "姓名"
                 tvGenderLabel.text = "性別"
                 tvMedicalIdLabel.text = "病歷號"
@@ -378,34 +394,46 @@ class MainActivity : AppCompatActivity() {
                 etMedicalId.hint = "未辨識"
                 etBirth.hint = "未辨識（YYYY/MM/DD）"
 
-                // 性別選項
-                rbMale.text = "男"
-                rbFemale.text = "女"
-                rbOther.text = "其他"
-
+                rbMale.text = "男"; rbFemale.text = "女"; rbOther.text = "其他"
                 if (textResult.text.isNullOrBlank()) textResult.text = "等待圖片識別..."
             }
         }
     }
 
 
+
     private fun showLanguageDialog() {
-        val languages = if (currentLanguage == LANG_CHINESE) arrayOf("繁體中文", "English") else arrayOf("Traditional Chinese", "English")
-        val builder = AlertDialog.Builder(this)
-        builder.setTitle(if (currentLanguage == LANG_CHINESE) "選擇語言" else "Select Language")
-        builder.setItems(languages) { dialog, which ->
-            val newLanguage = if (which == 0) LANG_CHINESE else LANG_ENGLISH
-            if (newLanguage != currentLanguage) {
-                currentLanguage = newLanguage
-                prefs.edit().putString(KEY_LANGUAGE, currentLanguage).apply()
-                updateLocale(currentLanguage)
-                updateUITexts()
-                initializeServices()
-            }
-            dialog.dismiss()
+        // 依目前語系，決定對話框標題語言
+        val title = when (currentLanguage) {
+            LANG_ENGLISH -> "Select Language"
+            LANG_KOREAN  -> "언어 선택"
+            else         -> "選擇語言"
         }
-        builder.show()
+
+        // 顯示三語選項（名稱本身各自使用該語言的自稱，較直覺）
+        val languages = arrayOf("繁體中文", "English", "한국어")
+
+        AlertDialog.Builder(this)
+            .setTitle(title)
+            .setItems(languages) { dialog, which ->
+                val newLanguage = when (which) {
+                    0 -> LANG_CHINESE
+                    1 -> LANG_ENGLISH
+                    2 -> LANG_KOREAN
+                    else -> currentLanguage
+                }
+                if (newLanguage != currentLanguage) {
+                    currentLanguage = newLanguage
+                    prefs.edit().putString(KEY_LANGUAGE, currentLanguage).apply()
+                    updateLocale(currentLanguage)
+                    updateUITexts()
+                    initializeServices()
+                }
+                dialog.dismiss()
+            }
+            .show()
     }
+
 
     private fun requestPermissions() {
         val permissionsToRequest = mutableListOf<String>()
@@ -447,30 +475,84 @@ class MainActivity : AppCompatActivity() {
     private fun initializeTTS() {
         try {
             tts?.shutdown()
+            // 可選：強制使用 Google TTS 引擎（若你確定裝置有）
+            // tts = TextToSpeech(this, { status -> ... }, "com.google.android.tts")
             tts = TextToSpeech(this) { status ->
                 if (status == TextToSpeech.SUCCESS) {
-                    val locale = when (currentLanguage) { LANG_ENGLISH -> Locale.US; else -> Locale.TRADITIONAL_CHINESE }
-                    val result = tts?.setLanguage(locale)
-                    if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
-                        if (currentLanguage == LANG_CHINESE) tts?.setLanguage(Locale.SIMPLIFIED_CHINESE)
+                    val targetLocale = when (currentLanguage) {
+                        LANG_ENGLISH -> Locale.US
+                        LANG_KOREAN  -> Locale.KOREAN
+                        else          -> Locale.TRADITIONAL_CHINESE
                     }
-                    tts?.setSpeechRate(0.8f)
 
-                    // 【修改】不再於播報結束後啟用語音辨識
+                    // 先嘗試挑選符合語系的 Voice（通常比 setLanguage 更精準）
+                    val koVoice = tts?.voices?.firstOrNull { v ->
+                        // 只要語言為 ko（或完整地區碼如 ko_KR），且品質與延遲達到一般水準
+                        v.locale?.language?.equals(targetLocale.language, ignoreCase = true) == true &&
+                                v.quality >= android.speech.tts.Voice.QUALITY_NORMAL &&
+                                v.latency <= android.speech.tts.Voice.LATENCY_NORMAL
+                    }
+
+                    val langResult = if (koVoice != null && currentLanguage == LANG_KOREAN) {
+                        tts?.voice = koVoice
+                        TextToSpeech.LANG_AVAILABLE // 代表我們用 voice 直接設定，視為可用
+                    } else {
+                        tts?.setLanguage(targetLocale)
+                    }
+
+                    if (langResult == TextToSpeech.LANG_MISSING_DATA || langResult == TextToSpeech.LANG_NOT_SUPPORTED) {
+                        // 嘗試引導使用者安裝對應語音資料
+                        try {
+                            val installIntent = Intent(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA)
+                            startActivity(installIntent)
+                            showToast(
+                                when (currentLanguage) {
+                                    LANG_ENGLISH -> "Korean TTS data not installed. Please install and retry."
+                                    LANG_KOREAN  -> "한국어 TTS 데이터가 설치되어 있지 않습니다. 설치 후 다시 시도하세요."
+                                    else         -> "尚未安裝韓文語音資料，請安裝後再試。"
+                                }
+                            )
+                        } catch (_: Exception) {
+                            showToast(
+                                when (currentLanguage) {
+                                    LANG_ENGLISH -> "Korean TTS not supported on this device."
+                                    LANG_KOREAN  -> "이 기기에서 한국어 TTS를 지원하지 않습니다."
+                                    else         -> "此裝置不支援韓文語音。"
+                                }
+                            )
+                        }
+                    }
+
+                    tts?.setSpeechRate(0.8f)
                     tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
-                        override fun onDone(utteranceId: String?) { /* no-op: do nothing */ }
-                        override fun onError(utteranceId: String?) { /* 失敗僅提示，不開啟聆聽 */ }
-                        override fun onStart(utteranceId: String?) { }
+                        override fun onDone(utteranceId: String?) {}
+                        override fun onError(utteranceId: String?) {}
+                        override fun onStart(utteranceId: String?) {}
                     })
                     isTtsInitialized = true
                 } else {
-                    runOnUiThread { showToast(if (currentLanguage == LANG_CHINESE) "語音系統初始化失敗" else "TTS initialization failed") }
+                    runOnUiThread {
+                        showToast(
+                            when (currentLanguage) {
+                                LANG_ENGLISH -> "TTS initialization failed"
+                                LANG_KOREAN  -> "TTS 초기화 실패"
+                                else         -> "語音系統初始化失敗"
+                            }
+                        )
+                    }
                 }
             }
         } catch (_: Exception) {
-            showToast(if (currentLanguage == LANG_CHINESE) "語音系統初始化失敗" else "TTS initialization failed")
+            showToast(
+                when (currentLanguage) {
+                    LANG_ENGLISH -> "TTS initialization failed"
+                    LANG_KOREAN  -> "TTS 초기화 실패"
+                    else         -> "語音系統初始化失敗"
+                }
+            )
         }
     }
+
 
 
     private fun initializeSpeechRecognizer() {
@@ -801,7 +883,7 @@ class MainActivity : AppCompatActivity() {
             selectGenderFromText(lastOcrFullText)
 
             currentPatientInfo?.let { info ->
-                val speechText = com.example.patientid.speechtext.SpeechText.build(info, isEnglish = (currentLanguage == LANG_ENGLISH))
+                val speechText = com.example.patientid.speechtext.SpeechText.build(info, currentLanguage)
                 speakText(speechText)
             }
         } else {

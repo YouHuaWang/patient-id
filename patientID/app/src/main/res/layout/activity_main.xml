@@ -34,16 +34,16 @@
 
         <Button
             android:id="@+id/btnLanguage"
-            style="@android:style/Widget.Material.Button.Borderless"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="🌐 English"
+            android:text="🌐 English / 한국어"
             android:textSize="14sp"
             android:textColor="#3498DB"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:padding="8dp"
             android:minWidth="0dp"
             android:minHeight="0dp" />
+
 
     </LinearLayout>
 
