@@ -3,7 +3,7 @@ package com.example.patientid.utils
 object MedDict {
 
     // 單字翻譯 (逐詞用)
-    val dict = mapOf(
+    private val rawDict = mapOf(
         // ====== 方向 / 位置 ======
         "Rt" to "右",
         "R" to "右",
@@ -41,6 +41,9 @@ object MedDict {
         "Pelvis" to "骨盆",
         "Skull" to "顱骨"
     )
+
+    // 自動轉成小寫 key 的字典
+    val dict = rawDict.mapKeys { it.key.lowercase() }
 
     // 常見整句 (phraseDict)
     val phraseDict = mapOf(

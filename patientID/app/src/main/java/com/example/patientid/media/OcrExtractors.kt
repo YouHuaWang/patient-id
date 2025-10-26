@@ -46,21 +46,26 @@ object OcrExtractors {
         // 🔁 改抓「一般檢查 / Routine」底下的區段
         val section = collectRoutineSection(lines)
 
-        val examParts = mutableListOf<String>()
+        val rawExamParts = mutableListOf<String>()
         var buffer: String? = null
         val codeRegex = Regex("^\\*?\\d{3,}[A-Za-z0-9-]*$")
-        val codeWithDescRegex = Regex("^\\*?\\d{3,}[A-Za-z0-9-]*\\s+.+")
+        val codeWithDescRegex = Regex("^\\*?\\d{3,}[A-Za-z0-9-]*\\s*.*")
         val raRegex = Regex("^RA\\d+")
 
         for (line in section) {
             if (raRegex.matches(line)) continue
             when {
-                codeWithDescRegex.matches(line) -> { buffer?.let { examParts.add(it) }; buffer = null; examParts.add(line) }
-                codeRegex.matches(line)        -> { buffer?.let { examParts.add(it) }; buffer = line }
-                buffer != null                 -> { buffer += " $line"; examParts.add(buffer!!); buffer = null }
+                codeWithDescRegex.matches(line) -> { buffer?.let { rawExamParts.add(it) }; buffer = null; rawExamParts.add(line) }
+                codeRegex.matches(line)        -> { buffer?.let { rawExamParts.add(it) }; buffer = line }
+                buffer != null                 -> { buffer += " $line"; rawExamParts.add(buffer!!); buffer = null }
+                else -> {rawExamParts.add(line)}
             }
         }
-        buffer?.let { examParts.add(it) }
+        buffer?.let { rawExamParts.add(it) }
+
+        val examParts = rawExamParts.filter {
+            it.length > 5 && !Regex("^[右]+$").matches(it.trim())
+        }
 
         if (examParts.isNotEmpty()) {
             val normalized = examParts.map { part ->

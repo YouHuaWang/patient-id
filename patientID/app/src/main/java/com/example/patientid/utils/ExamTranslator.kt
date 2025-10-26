@@ -12,7 +12,7 @@ object ExamTranslator {
     }
 
     fun translateExamPart(part: String): String {
-        val tokens = part.split(" ").filter { it.isNotBlank() }
+        val tokens = part.split(Regex("[\\s+/-]")).filter { it.isNotBlank() }
         if (tokens.isEmpty()) return part
 
         val firstToken = tokens.first()
@@ -32,7 +32,7 @@ object ExamTranslator {
 
         // === Step 3: 逐詞翻譯 (含模糊修正) ===
         val translatedTokens = tokens.map { token ->
-            val cleaned = token.replace(Regex("[^A-Za-z]"), "")
+            val cleaned = token.replace(Regex("[^A-Za-z]"), "").lowercase()
             val baseTrans = MedDict.dict[cleaned]
             val extraTrans = extraDict[cleaned]
             val fuzzyTrans = fuzzyMatch(cleaned, MedDict.dict + extraDict)
@@ -51,11 +51,17 @@ object ExamTranslator {
             Regex("\\b(Rt|RI|R)\\b", RegexOption.IGNORE_CASE).containsMatchIn(part) -> "右"
             else -> ""
         }
+        val resultText = translatedTokens.joinToString(" ")
 
-        return if (sideInfo.isNotEmpty() && !translatedTokens.joinToString(" ").contains(sideInfo)) {
-            "$part → $sideInfo ${translatedTokens.joinToString(" ")}"
+        return if (sideInfo.isNotEmpty() && !resultText.contains(sideInfo)) {
+            "$part → $sideInfo $resultText"
         } else {
-            translatedTokens.joinToString(" ")
+            if (resultText == part || resultText == tokens.joinToString(" ")) {
+                // 沒有成功翻譯任何詞，保留原始英文
+                part
+            } else {
+                resultText
+            }
         }
     }
 
