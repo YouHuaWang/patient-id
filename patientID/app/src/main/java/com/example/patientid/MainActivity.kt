@@ -1087,15 +1087,25 @@ class MainActivity : AppCompatActivity() {
             buildString {
                 append("Patient verification completed\n")
                 append("Name: ${info.name}\n")
-                append("Date of birth: $birthForDialog\n")
-                append("Medical ID: ${info.medicalId}")
+                append("Date of birth: ${info.birthDate}\n")
+                append("Medical ID: ${info.medicalId}\n")
+                append("Examination: ${info.examType}")
+            }
+        } else if (currentLanguage == LANG_KOREAN) {
+            buildString {
+                append("환자 신원 확인 완료\n")
+                append("이름: ${info.name}\n")
+                append("생년월일: ${info.birthDate}\n")
+                append("환자 번호: ${info.medicalId}\n")
+                append("검사 항목: ${info.examType}")
             }
         } else {
             buildString {
                 append("病患身份驗證完成\n")
                 append("姓名：${info.name}\n")
-                append("出生日期：$birthForDialog\n")
-                append("病歷號：${info.medicalId}")
+                append("出生日期：${info.birthDate}\n")
+                append("病歷號：${info.medicalId}\n")
+                append("檢查項目：${info.examType}")
             }
         }
 
