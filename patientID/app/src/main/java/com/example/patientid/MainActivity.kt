@@ -919,6 +919,11 @@ class MainActivity : AppCompatActivity() {
 
             selectGenderFromText(lastOcrFullText)
 
+            // MainActivity.kt（handleOCRSuccess 內，準備語音之前）
+            val uiExam = etExam.text?.toString()?.trim().orEmpty()
+            if (uiExam.isNotEmpty()) {
+                currentPatientInfo = currentPatientInfo?.copy(examType = uiExam)
+            }
             currentPatientInfo?.let { info ->
                 val speechText = com.example.patientid.speechtext.SpeechText.build(info, currentLanguage)
                 speakText(speechText)

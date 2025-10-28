@@ -222,6 +222,7 @@
                             android:text="請人工核對下列病患資訊"
                             android:textSize="16sp"
                             android:textStyle="bold"
+                            android:textColor="#2C3E50"
                             android:layout_marginBottom="8dp" />
 
                         <!-- 姓名 -->
@@ -232,6 +233,7 @@
                             android:text="姓名"
                             android:textSize="14sp"
                             android:textStyle="bold"
+                            android:textColor="#2C3E50"
                             android:layout_marginTop="6dp"
                             android:layout_marginBottom="4dp" />
                         <EditText
@@ -241,6 +243,7 @@
                             android:hint="未辨識"
                             android:singleLine="true"
                             android:padding="12dp"
+                            android:textColor="#2C3E50"
                             android:background="@android:drawable/edit_text" />
 
                         <!-- 性別 -->
@@ -251,6 +254,7 @@
                             android:text="性別"
                             android:textSize="14sp"
                             android:textStyle="bold"
+                            android:textColor="#2C3E50"
                             android:layout_marginTop="12dp"
                             android:layout_marginBottom="4dp" />
                         <RadioGroup
@@ -262,18 +266,21 @@
                                 android:id="@+id/rbMale"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="男" />
+                                android:text="男"
+                                android:textColor="#2C3E50" />
                             <RadioButton
                                 android:id="@+id/rbFemale"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="女"
+                                android:textColor="#2C3E50"
                                 android:layout_marginStart="16dp" />
                             <RadioButton
                                 android:id="@+id/rbOther"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="其他"
+                                android:textColor="#2C3E50"
                                 android:layout_marginStart="16dp" />
                         </RadioGroup>
 
@@ -285,6 +292,7 @@
                             android:text="病歷號"
                             android:textSize="14sp"
                             android:textStyle="bold"
+                            android:textColor="#2C3E50"
                             android:layout_marginTop="12dp"
                             android:layout_marginBottom="4dp" />
                         <EditText
@@ -294,9 +302,10 @@
                             android:hint="未辨識"
                             android:singleLine="true"
                             android:padding="12dp"
+                            android:textColor="#2C3E50"
                             android:background="@android:drawable/edit_text" />
 
-                        <!-- 生日（民國年） -->
+                        <!-- 出生年月日 -->
                         <TextView
                             android:id="@+id/tvBirthLabel"
                             android:layout_width="wrap_content"
@@ -304,6 +313,7 @@
                             android:text="出生年月日"
                             android:textSize="14sp"
                             android:textStyle="bold"
+                            android:textColor="#2C3E50"
                             android:layout_marginTop="12dp"
                             android:layout_marginBottom="4dp" />
                         <EditText
@@ -313,6 +323,7 @@
                             android:hint="未辨識（民國YYY/MM/DD）"
                             android:singleLine="true"
                             android:padding="12dp"
+                            android:textColor="#2C3E50"
                             android:background="@android:drawable/edit_text" />
 
                         <!-- 檢查項目 -->
@@ -323,9 +334,9 @@
                             android:text="檢查項目"
                             android:textSize="14sp"
                             android:textStyle="bold"
+                            android:textColor="#2C3E50"
                             android:layout_marginTop="12dp"
                             android:layout_marginBottom="4dp" />
-
                         <EditText
                             android:id="@+id/etExam"
                             android:layout_width="match_parent"
@@ -333,7 +344,9 @@
                             android:hint="未辨識"
                             android:singleLine="true"
                             android:padding="12dp"
+                            android:textColor="#2C3E50"
                             android:background="@android:drawable/edit_text" />
+
 
 
                         <LinearLayout
