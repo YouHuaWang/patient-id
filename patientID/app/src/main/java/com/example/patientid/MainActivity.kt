@@ -88,6 +88,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvResultHeader: TextView
     private lateinit var tvPlaceholder: TextView
 
+
+    private lateinit var tvVerifyTitle: TextView
+
     private lateinit var tvNameLabel: TextView
     private lateinit var tvGenderLabel: TextView
     private lateinit var tvMedicalIdLabel: TextView
@@ -193,6 +196,8 @@ class MainActivity : AppCompatActivity() {
         // tvSummaryGender = findViewById(R.id.tvSummaryGender)
         // tvSummaryBirth = findViewById(R.id.tvSummaryBirth)
         // tvSummaryExam = findViewById(R.id.tvSummaryExam)
+
+        tvVerifyTitle = findViewById(R.id.tvVerifyTitle)
 
         imageView = findViewById(R.id.imageView)
         textResult = findViewById(R.id.textResult)
@@ -370,26 +375,25 @@ class MainActivity : AppCompatActivity() {
             else -> "請輸入姓名"
         }
 
+        // 性別
         val labelGender = when (currentLanguage) {
             LANG_ENGLISH -> "Gender"
-            LANG_KOREAN -> "성별"
-            else -> "性別"
+            LANG_KOREAN  -> "성별"
+            else         -> "性別"
         }
         val textMale = when (currentLanguage) {
             LANG_ENGLISH -> "Male"
-            LANG_KOREAN -> "남"
-            else -> "男"
+            LANG_KOREAN  -> "남"
+            else         -> "男"
         }
         val textFemale = when (currentLanguage) {
             LANG_ENGLISH -> "Female"
-            LANG_KOREAN -> "여"
-            else -> "女"
+            LANG_KOREAN  -> "여"
+            else         -> "女"
         }
-        val textOther = when (currentLanguage) {
-            LANG_ENGLISH -> "Other"
-            LANG_KOREAN -> "기타"
-            else -> "其他"
-        }
+
+
+
 
         val labelBirth = when (currentLanguage) {
             LANG_ENGLISH -> "Date of Birth"
@@ -428,28 +432,23 @@ class MainActivity : AppCompatActivity() {
         }
         val rbM = RadioButton(ctx).apply {
             text = textMale
-            setTextColor(0xFFFFFFFF.toInt()) // 白色字體（因為深灰背景）
+            setTextColor(0xFFFFFFFF.toInt()) // 深灰底，白字
             textSize = 16f
         }
         val rbF = RadioButton(ctx).apply {
             text = textFemale
-            setTextColor(0xFFFFFFFF.toInt()) // 白色字體
-            textSize = 16f
-        }
-        val rbO = RadioButton(ctx).apply {
-            text = textOther
-            setTextColor(0xFFFFFFFF.toInt()) // 白色字體
+            setTextColor(0xFFFFFFFF.toInt())
             textSize = 16f
         }
         rg.addView(rbM)
         rg.addView(rbF)
-        rg.addView(rbO)
         when (curGenderId) {
-            R.id.rbMale -> rg.check(rbM.id)
+            R.id.rbMale   -> rg.check(rbM.id)
             R.id.rbFemale -> rg.check(rbF.id)
-            else -> { }
+            else -> { /* 不勾 */ }
         }
         root.addView(createSection(labelGender, rg))
+
 
         // 出生年月日
         val etBirthD = styledEditText(hintBirth, curBirth)
@@ -519,6 +518,8 @@ class MainActivity : AppCompatActivity() {
                 btnLanguage.text = "🌐 Language"
                 tvTitle.text = "Patient Verification System"
                 tvResultHeader.text = "Recognition Result"
+                if (textResult.text.isNullOrBlank()) textResult.text = "Waiting for image recognition..."
+                tvVerifyTitle.text = "Please manually verify the following patient information"  // ← 新增
                 tvPlaceholder.text = "Please take or select medical order photo"
 
                 btnConfirmOK.text = "✅ Confirm"
@@ -547,6 +548,8 @@ class MainActivity : AppCompatActivity() {
 
                 tvTitle.text = "환자 신원 확인 시스템"
                 tvResultHeader.text = "인식 결과"
+                if (textResult.text.isNullOrBlank()) textResult.text = "이미지 인식을 기다리는 중…"
+                tvVerifyTitle.text = "아래 환자 정보를 확인해 주세요"  // ← 新增
                 tvPlaceholder.text = "의뢰서 사진을 촬영하거나 선택하세요"
 
                 btnConfirmOK.text = "✅ 확인"
@@ -574,6 +577,8 @@ class MainActivity : AppCompatActivity() {
                 btnLanguage.text = "🌐 語言"
                 tvTitle.text = "病患身份驗證系統"
                 tvResultHeader.text = "識別結果"
+                if (textResult.text.isNullOrBlank()) textResult.text = "等待圖片識別..."
+                tvVerifyTitle.text = "請人工核對下列病患資訊"  // ← 新增
                 tvPlaceholder.text = "請拍攝或選擇醫令單"
 
                 btnConfirmOK.text = "✅ 確認"
