@@ -108,14 +108,13 @@ class MainActivity : AppCompatActivity() {
     private lateinit var rgGender: RadioGroup
     private lateinit var rbMale: RadioButton
     private lateinit var rbFemale: RadioButton
-    private lateinit var rbOther: RadioButton
 
     private fun getSelectedGenderText(): String {
         val id = rgGender.checkedRadioButtonId
         val text = when (id) {
             R.id.rbMale -> rbMale.text?.toString() ?: ""
             R.id.rbFemale -> rbFemale.text?.toString() ?: ""
-            R.id.rbOther -> rbOther.text?.toString() ?: ""
+
             else -> ""
         }
         return text
@@ -210,7 +209,6 @@ class MainActivity : AppCompatActivity() {
         val gender = when (rgGender.checkedRadioButtonId) {
             R.id.rbMale   -> rbMale.text?.toString() ?: ""
             R.id.rbFemale -> rbFemale.text?.toString() ?: ""
-            R.id.rbOther  -> rbOther.text?.toString() ?: ""
             else -> ""
         }
         val birth = etBirth.text?.toString()?.trim().orEmpty()
@@ -262,7 +260,6 @@ class MainActivity : AppCompatActivity() {
         rgGender = findViewById(R.id.rgGender)
         rbMale = findViewById(R.id.rbMale)
         rbFemale = findViewById(R.id.rbFemale)
-        rbOther = findViewById(R.id.rbOther)
 
         tvExamLabel = findViewById(R.id.tvExamLabel)
         etExam = findViewById(R.id.etExam)
@@ -383,11 +380,12 @@ class MainActivity : AppCompatActivity() {
         fun field(hint: String, value: String): EditText = EditText(ctx).apply {
             setText(value)
             this.hint = hint
-            setTextColor(0xFFFFFFFF.toInt())
-            setHintTextColor(0x80FFFFFF.toInt())
+            setTextColor(0xFF000000.toInt())        // 🔹 改成黑色文字
+            setHintTextColor(0xFF888888.toInt())    // 🔹 改成灰色提示文字
             setBackgroundResource(android.R.drawable.edit_text)
             setPadding(pad / 2, pad / 2, pad / 2, pad / 2)
         }
+
 
         // 欄位順序：病歷號、姓名、性別、出生年月日、檢查項目
         val etMrn   = field("病歷號", curMrn)
@@ -403,7 +401,6 @@ class MainActivity : AppCompatActivity() {
         when (curGenderId) {
             R.id.rbMale   -> rg.check(rbM.id)
             R.id.rbFemale -> rg.check(rbF.id)
-            R.id.rbOther  -> rg.check(rbO.id)
             else -> { /* 不勾 */ }
         }
 
@@ -436,7 +433,6 @@ class MainActivity : AppCompatActivity() {
                 when (rg.checkedRadioButtonId) {
                     rbM.id -> rgGender.check(R.id.rbMale)
                     rbF.id -> rgGender.check(R.id.rbFemale)
-                    rbO.id -> rgGender.check(R.id.rbOther)
                     else   -> rgGender.clearCheck()
                 }
 
@@ -488,7 +484,7 @@ class MainActivity : AppCompatActivity() {
                 etMedicalId.hint = "Unknown"
                 etBirth.hint = "Unknown (YYYY/MM/DD)"
 
-                rbMale.text = "Male"; rbFemale.text = "Female"; rbOther.text = "Other"
+                rbMale.text = "Male"; rbFemale.text = "Female";
                 if (textResult.text.isNullOrBlank()) textResult.text = "Waiting for image recognition..."
 
                 tvExamLabel.text = "Examination Items"
@@ -515,7 +511,7 @@ class MainActivity : AppCompatActivity() {
                 etMedicalId.hint = "인식되지 않음"
                 etBirth.hint = "인식되지 않음 (YYYY/MM/DD)"
 
-                rbMale.text = "남"; rbFemale.text = "여"; rbOther.text = "기타"
+                rbMale.text = "남"; rbFemale.text = "여";
                 if (textResult.text.isNullOrBlank()) textResult.text = "이미지 인식을 기다리는 중…"
 
                 tvExamLabel.text = "검사 항목"
@@ -541,7 +537,7 @@ class MainActivity : AppCompatActivity() {
                 etMedicalId.hint = "未辨識"
                 etBirth.hint = "未辨識（YYYY/MM/DD）"
 
-                rbMale.text = "男"; rbFemale.text = "女"; rbOther.text = "其他"
+                rbMale.text = "男"; rbFemale.text = "女";
                 if (textResult.text.isNullOrBlank()) textResult.text = "等待圖片識別..."
 
                 tvExamLabel.text = "檢查項目"

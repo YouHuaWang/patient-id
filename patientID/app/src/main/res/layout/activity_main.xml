@@ -275,6 +275,26 @@
                                 android:textColor="#000000" />
                         </LinearLayout>
 
+                        <!-- 病歷號 -->
+                        <TextView
+                            android:id="@+id/tvMedicalIdLabel"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="病歷號"
+                            android:textSize="14sp"
+                            android:textStyle="bold"
+                            android:textColor="#2C3E50"
+                            android:layout_marginTop="12dp"
+                            android:layout_marginBottom="4dp" />
+                        <EditText
+                            android:id="@+id/etMedicalId"
+                            android:layout_width="match_parent"
+                            android:layout_height="48dp"
+                            android:hint="未辨識"
+                            android:singleLine="true"
+                            android:padding="12dp"
+                            android:textColor="#2C3E50"
+                            android:background="@android:drawable/edit_text" />
 
                         <!-- 姓名 -->
                         <TextView
@@ -326,35 +346,8 @@
                                 android:text="女"
                                 android:textColor="#2C3E50"
                                 android:layout_marginStart="16dp" />
-                            <RadioButton
-                                android:id="@+id/rbOther"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="其他"
-                                android:textColor="#2C3E50"
-                                android:layout_marginStart="16dp" />
-                        </RadioGroup>
 
-                        <!-- 病歷號 -->
-                        <TextView
-                            android:id="@+id/tvMedicalIdLabel"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="病歷號"
-                            android:textSize="14sp"
-                            android:textStyle="bold"
-                            android:textColor="#2C3E50"
-                            android:layout_marginTop="12dp"
-                            android:layout_marginBottom="4dp" />
-                        <EditText
-                            android:id="@+id/etMedicalId"
-                            android:layout_width="match_parent"
-                            android:layout_height="48dp"
-                            android:hint="未辨識"
-                            android:singleLine="true"
-                            android:padding="12dp"
-                            android:textColor="#2C3E50"
-                            android:background="@android:drawable/edit_text" />
+                        </RadioGroup>
 
                         <!-- 出生年月日 -->
                         <TextView
