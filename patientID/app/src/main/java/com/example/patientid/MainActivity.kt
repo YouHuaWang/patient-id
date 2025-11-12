@@ -38,7 +38,6 @@ import java.util.*
 import com.example.patientid.utils.MedDict
 import com.example.patientid.utils.ExamTranslator
 
-// === 新增 import：引用分檔後的模組 ===
 import com.example.patientid.core.PatientInfo
 import com.example.patientid.core.CombinedOCRResult
 import com.example.patientid.core.LocaleSupport
@@ -46,7 +45,6 @@ import com.example.patientid.media.ImageKit
 import com.example.patientid.recognition.OcrExtractors
 import com.example.patientid.recognition.PatientParsing
 import com.example.patientid.speechtext.SpeechText
-// ===================================
 import android.view.ViewGroup
 
 class MainActivity : AppCompatActivity() {
@@ -62,17 +60,13 @@ class MainActivity : AppCompatActivity() {
         private const val LANG_KOREAN = "ko"
     }
 
+    // ❌ 移除這些唯讀摘要 TextView (不再需要)
+    // private lateinit var tvSummaryMrn: TextView
+    // private lateinit var tvSummaryName: TextView
+    // private lateinit var tvSummaryGender: TextView
+    // private lateinit var tvSummaryBirth: TextView
+    // private lateinit var tvSummaryExam: TextView
 
-    // 唯讀摘要 TextView
-    private lateinit var tvSummaryMrn: TextView
-    private lateinit var tvSummaryName: TextView
-    private lateinit var tvSummaryGender: TextView
-    private lateinit var tvSummaryBirth: TextView
-    private lateinit var tvSummaryExam: TextView
-
-
-
-    // === 新增：在 UI Components 區塊加入新元件 ===
     private lateinit var llVerifyPanel: LinearLayout
     private lateinit var etName: EditText
     private lateinit var etBirth: EditText
@@ -80,9 +74,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnConfirmOK: Button
     private lateinit var btnEditToggle: Button
 
-    // === 新增：常數旗標，全面停用「語音回覆確認」流程 ===
     private val USE_VOICE_CONFIRM = false
-
 
     // UI Components
     private lateinit var imageView: ImageView
@@ -96,12 +88,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvResultHeader: TextView
     private lateinit var tvPlaceholder: TextView
 
-    // 2) 新增：在 UI Components 區塊加入（性別＋標題）
     private lateinit var tvNameLabel: TextView
     private lateinit var tvGenderLabel: TextView
     private lateinit var tvMedicalIdLabel: TextView
     private lateinit var tvBirthLabel: TextView
-
     private lateinit var tvExamLabel: TextView
     private lateinit var etExam: EditText
 
@@ -114,7 +104,6 @@ class MainActivity : AppCompatActivity() {
         val text = when (id) {
             R.id.rbMale -> rbMale.text?.toString() ?: ""
             R.id.rbFemale -> rbFemale.text?.toString() ?: ""
-
             else -> ""
         }
         return text
@@ -132,25 +121,20 @@ class MainActivity : AppCompatActivity() {
     private var lastOcrFullText: String = ""
     private var currentBitmap: Bitmap? = null
 
-    // Language & Speech Recognition Dialog
     private lateinit var prefs: SharedPreferences
     private var currentLanguage: String = LANG_CHINESE
     private var speechDialog: AlertDialog? = null
 
-    // 觸發防抖與狀態旗標
     private var didStartRecognition = false
     private var lastSpeechText: String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // 讓鍵盤彈出時，內容區自動 resize（不會被鍵盤蓋住）
         window.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
-
         super.onCreate(savedInstanceState)
 
-        // Initialize language settings
         prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         currentLanguage = prefs.getString(KEY_LANGUAGE, LANG_CHINESE) ?: LANG_CHINESE
-        updateLocale(currentLanguage) // wrapper -> LocaleSupport
+        updateLocale(currentLanguage)
 
         setContentView(R.layout.activity_main)
 
@@ -158,8 +142,6 @@ class MainActivity : AppCompatActivity() {
         requestPermissions()
         initializeServices()
     }
-
-    // ====== 以下是「同名 wrapper」：僅換到新檔執行，呼叫點不變 ======
 
     private fun updateLocale(language: String) {
         LocaleSupport.updateLocale(this, language)
@@ -197,42 +179,21 @@ class MainActivity : AppCompatActivity() {
     private fun extractPatientInfo(text: String): PatientInfo? {
         return PatientParsing.extractPatientInfo(text, currentLanguage)
     }
+
     private fun buildSpeechText(info: PatientInfo): String {
         return SpeechText.build(info, currentLanguage)
     }
 
-
-    private fun updateVerifySummary() {
-        // 來源：以目前欄位內容為準（若 currentPatientInfo 存在也可取用）
-        val mrn = etMedicalId.text?.toString()?.trim().orEmpty()
-        val name = etName.text?.toString()?.trim().orEmpty()
-        val gender = when (rgGender.checkedRadioButtonId) {
-            R.id.rbMale   -> rbMale.text?.toString() ?: ""
-            R.id.rbFemale -> rbFemale.text?.toString() ?: ""
-            else -> ""
-        }
-        val birth = etBirth.text?.toString()?.trim().orEmpty()
-        val exam  = etExam.text?.toString()?.trim().orEmpty()
-
-        tvSummaryMrn.text    = "病歷號：${mrn}"
-        tvSummaryName.text   = "姓名：${name}"
-        tvSummaryGender.text = "性別：${gender}"
-        tvSummaryBirth.text  = "出生年月日：${birth}"
-        tvSummaryExam.text   = "檢查項目：${exam}"
-    }
-
-
-    // ====== 其餘內容：完全沿用你現有 MainActivity（未改動邏輯） ======
+    // ❌ 移除 updateVerifySummary() 函式 (不再需要更新摘要區)
 
     private fun initializeUI() {
+        // ❌ 移除這些摘要 TextView 的 findViewById
+        // tvSummaryMrn = findViewById(R.id.tvSummaryMrn)
+        // tvSummaryName = findViewById(R.id.tvSummaryName)
+        // tvSummaryGender = findViewById(R.id.tvSummaryGender)
+        // tvSummaryBirth = findViewById(R.id.tvSummaryBirth)
+        // tvSummaryExam = findViewById(R.id.tvSummaryExam)
 
-        tvSummaryMrn   = findViewById(R.id.tvSummaryMrn)
-        tvSummaryName  = findViewById(R.id.tvSummaryName)
-        tvSummaryGender= findViewById(R.id.tvSummaryGender)
-        tvSummaryBirth = findViewById(R.id.tvSummaryBirth)
-        tvSummaryExam  = findViewById(R.id.tvSummaryExam)
-
-        // --- 原有 findViewById ---
         imageView = findViewById(R.id.imageView)
         textResult = findViewById(R.id.textResult)
         btnTakePhoto = findViewById(R.id.btnTakePhoto)
@@ -244,7 +205,6 @@ class MainActivity : AppCompatActivity() {
         tvResultHeader = findViewById(R.id.tvResultHeader)
         tvPlaceholder = findViewById(R.id.tvPlaceholder)
 
-        // --- 身份確認區塊與欄位 ---
         llVerifyPanel = findViewById(R.id.llVerifyPanel)
         etName = findViewById(R.id.etName)
         etBirth = findViewById(R.id.etBirth)
@@ -252,7 +212,6 @@ class MainActivity : AppCompatActivity() {
         btnConfirmOK = findViewById(R.id.btnConfirmOK)
         btnEditToggle = findViewById(R.id.btnEditToggle)
 
-        // --- 欄位標題與性別元件 ---
         tvNameLabel = findViewById(R.id.tvNameLabel)
         tvGenderLabel = findViewById(R.id.tvGenderLabel)
         tvMedicalIdLabel = findViewById(R.id.tvMedicalIdLabel)
@@ -260,45 +219,36 @@ class MainActivity : AppCompatActivity() {
         rgGender = findViewById(R.id.rgGender)
         rbMale = findViewById(R.id.rbMale)
         rbFemale = findViewById(R.id.rbFemale)
-
         tvExamLabel = findViewById(R.id.tvExamLabel)
         etExam = findViewById(R.id.etExam)
 
-        // --- 初始 UI 狀態 ---
-        // 文字區塊保留並可捲動（由外層 ScrollView 處理），啟用可選取與多行換行
         textResult.isClickable = true
         textResult.isFocusable = true
         textResult.setTextIsSelectable(true)
         textResult.setHorizontallyScrolling(false)
 
-        // 身份確認面板預設隱藏；欄位先鎖定（顯示時可按「修改」再開）
         llVerifyPanel.visibility = View.GONE
         etName.isEnabled = false
         etBirth.isEnabled = false
         etMedicalId.isEnabled = false
-
         etExam.isEnabled = false
 
         rgGender.clearCheck()
         for (i in 0 until rgGender.childCount) rgGender.getChildAt(i).isEnabled = false
 
-        // --- 依需求調整面板內的顯示順序：病歷號 → 姓名 → 性別 → 出生年月日 ---
-        // 先把按鈕列抓出來（同一列有 確認／修改）
         val actionRow = (btnConfirmOK.parent as? View)
         if (actionRow != null) llVerifyPanel.removeView(actionRow)
 
-        // 先移除要重排的元素，避免重複加入
         listOf(
             tvMedicalIdLabel, etMedicalId,
             tvNameLabel, etName,
             tvGenderLabel, rgGender,
             tvBirthLabel, etBirth,
-            tvExamLabel, etExam               // ← 新增
+            tvExamLabel, etExam
         ).forEach { v ->
             (v.parent as? ViewGroup)?.removeView(v)
         }
 
-        // 依指定順序加入
         llVerifyPanel.addView(tvMedicalIdLabel)
         llVerifyPanel.addView(etMedicalId)
         llVerifyPanel.addView(tvNameLabel)
@@ -307,21 +257,16 @@ class MainActivity : AppCompatActivity() {
         llVerifyPanel.addView(rgGender)
         llVerifyPanel.addView(tvBirthLabel)
         llVerifyPanel.addView(etBirth)
+        llVerifyPanel.addView(tvExamLabel)
+        llVerifyPanel.addView(etExam)
 
-        llVerifyPanel.addView(tvExamLabel)   // ← 新增
-        llVerifyPanel.addView(etExam)        // ← 新增
-
-        // 最後把按鈕列加回去
         if (actionRow != null) llVerifyPanel.addView(actionRow)
 
-        // --- 行為：確認＝取用欄位 → 覆寫 currentPatientInfo → 成功流程 ---
         btnConfirmOK.setOnClickListener {
             val nameIn = etName.text?.toString()?.trim().orEmpty()
             val birthIn = etBirth.text?.toString()?.trim().orEmpty()
             val midIn = etMedicalId.text?.toString()?.trim().orEmpty()
             val examIn = etExam.text?.toString()?.trim().orEmpty()
-
-
 
             val unknown = if (currentLanguage == LANG_ENGLISH) "Unknown" else "未辨識"
             val name = if (nameIn.isEmpty()) unknown else nameIn
@@ -329,146 +274,249 @@ class MainActivity : AppCompatActivity() {
             val mid = if (midIn.isEmpty()) unknown else midIn
             val exam = if (examIn.isEmpty()) unknown else examIn
 
-            currentPatientInfo = com.example.patientid.core.PatientInfo(
-                name, birth, mid, exam
-            )
+            currentPatientInfo = PatientInfo(name, birth, mid, exam)
             handleVerificationSuccess()
         }
 
-        // --- 行為：修改鍵＝切換欄位可編輯狀態與文字 ---
         btnEditToggle.setOnClickListener {
             showEditDialog()
         }
 
-
-        // --- 其他按鈕（原行為保留） ---
         btnTakePhoto.setOnClickListener { handleTakePhoto() }
         btnSelectImage.setOnClickListener { handleSelectImage() }
         btnReprocessImage.setOnClickListener { reprocessCurrentImage() }
         btnLanguage.setOnClickListener { showLanguageDialog() }
 
-        // 依你原本邏輯，預設先隱藏重新分析鈕
         btnReprocessImage.visibility = View.GONE
-
-        // 根據目前語系套用字串（會同步更新標題/選項/按鈕與 hint）
         updateUITexts()
     }
 
-
+    // 🎨 美化後的編輯對話框
     private fun showEditDialog() {
-        // 目前值
-        val curMrn   = etMedicalId.text?.toString()?.trim().orEmpty()
-        val curName  = etName.text?.toString()?.trim().orEmpty()
+        val curMrn = etMedicalId.text?.toString()?.trim().orEmpty()
+        val curName = etName.text?.toString()?.trim().orEmpty()
         val curBirth = etBirth.text?.toString()?.trim().orEmpty()
-        val curExam  = etExam.text?.toString()?.trim().orEmpty()
+        val curExam = etExam.text?.toString()?.trim().orEmpty()
         val curGenderId = rgGender.checkedRadioButtonId
 
-        // 容器（暗底）
         val ctx = this
-        val pad = (16 * resources.displayMetrics.density).toInt()
+        val pad = (20 * resources.displayMetrics.density).toInt()
+        val sectionPad = (12 * resources.displayMetrics.density).toInt()
+
+        // 🎨 使用 ScrollView 包裝整個內容
+        val scrollView = ScrollView(ctx).apply {
+            setPadding(0, 0, 0, 0)
+        }
+
         val root = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
+            setBackgroundColor(0xFF424242.toInt()) // 深灰背景（與標題列相同）
             setPadding(pad, pad, pad, pad)
-            setBackgroundColor(0xFF1E1E1E.toInt()) // 深色背景
         }
 
-        fun label(text: String): TextView = TextView(ctx).apply {
-            this.text = text
-            setTextColor(0xFFFFFFFF.toInt()) // 白字
-            textSize = 14f
+        fun createSection(labelText: String, content: View): LinearLayout {
+            return LinearLayout(ctx).apply {
+                orientation = LinearLayout.VERTICAL
+                setBackgroundColor(0xFF424242.toInt()) // 深灰背景，無padding效果
+                setPadding(0, 0, 0, 0) // 移除 padding
+                val params = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    bottomMargin = (12 * resources.displayMetrics.density).toInt()
+                }
+                layoutParams = params
+
+                // 白色標題
+                val label = TextView(ctx).apply {
+                    text = labelText
+                    setTextColor(0xFFFFFFFF.toInt()) // 白色字體
+                    textSize = 14f
+                    setTypeface(null, android.graphics.Typeface.BOLD)
+                    setPadding(0, 0, 0, (8 * resources.displayMetrics.density).toInt())
+                }
+                addView(label)
+                addView(content)
+            }
         }
-        fun field(hint: String, value: String): EditText = EditText(ctx).apply {
+
+        fun styledEditText(hint: String, value: String): EditText = EditText(ctx).apply {
             setText(value)
             this.hint = hint
-            setTextColor(0xFF000000.toInt())        // 🔹 改成黑色文字
-            setHintTextColor(0xFF888888.toInt())    // 🔹 改成灰色提示文字
-            setBackgroundResource(android.R.drawable.edit_text)
-            setPadding(pad / 2, pad / 2, pad / 2, pad / 2)
+            setTextColor(0xFF000000.toInt()) // 黑色字體
+            setHintTextColor(0xFF95A5A6.toInt())
+            setBackgroundResource(android.R.drawable.edit_text) // 保持預設樣式
         }
 
+        val labelMrn = when (currentLanguage) {
+            LANG_ENGLISH -> "Medical ID"
+            LANG_KOREAN -> "환자 번호"
+            else -> "病歷號"
+        }
+        val hintMrn = when (currentLanguage) {
+            LANG_ENGLISH -> "Enter Medical ID"
+            LANG_KOREAN -> "환자 번호 입력"
+            else -> "請輸入病歷號"
+        }
 
-        // 欄位順序：病歷號、姓名、性別、出生年月日、檢查項目
-        val etMrn   = field("病歷號", curMrn)
-        val etNameD = field("姓名", curName)
+        val labelName = when (currentLanguage) {
+            LANG_ENGLISH -> "Name"
+            LANG_KOREAN -> "이름"
+            else -> "姓名"
+        }
+        val hintName = when (currentLanguage) {
+            LANG_ENGLISH -> "Enter Name"
+            LANG_KOREAN -> "이름 입력"
+            else -> "請輸入姓名"
+        }
 
+        val labelGender = when (currentLanguage) {
+            LANG_ENGLISH -> "Gender"
+            LANG_KOREAN -> "성별"
+            else -> "性別"
+        }
+        val textMale = when (currentLanguage) {
+            LANG_ENGLISH -> "Male"
+            LANG_KOREAN -> "남"
+            else -> "男"
+        }
+        val textFemale = when (currentLanguage) {
+            LANG_ENGLISH -> "Female"
+            LANG_KOREAN -> "여"
+            else -> "女"
+        }
+        val textOther = when (currentLanguage) {
+            LANG_ENGLISH -> "Other"
+            LANG_KOREAN -> "기타"
+            else -> "其他"
+        }
+
+        val labelBirth = when (currentLanguage) {
+            LANG_ENGLISH -> "Date of Birth"
+            LANG_KOREAN -> "생년월일"
+            else -> "出生年月日"
+        }
+        val hintBirth = when (currentLanguage) {
+            LANG_ENGLISH -> "Enter Date of Birth (ROC Calendar)"
+            LANG_KOREAN -> "생년월일 입력 (민국)"
+            else -> "請輸入出生年月日(民國)"
+        }
+
+        val labelExam = when (currentLanguage) {
+            LANG_ENGLISH -> "Examination Items"
+            LANG_KOREAN -> "검사 항목"
+            else -> "檢查項目"
+        }
+        val hintExam = when (currentLanguage) {
+            LANG_ENGLISH -> "Enter Examination Items"
+            LANG_KOREAN -> "검사 항목 입력"
+            else -> "請輸入檢查項目"
+        }
+
+        // 病歷號
+        val etMrn = styledEditText(hintMrn, curMrn)
+        root.addView(createSection(labelMrn, etMrn))
+
+        // 姓名
+        val etNameD = styledEditText(hintName, curName)
+        root.addView(createSection(labelName, etNameD))
+
+        // 性別
         val rg = RadioGroup(ctx).apply {
             orientation = RadioGroup.HORIZONTAL
+            setPadding(0, (8 * resources.displayMetrics.density).toInt(), 0, (8 * resources.displayMetrics.density).toInt())
         }
-        val rbM = RadioButton(ctx).apply { text = "男"; setTextColor(0xFFFFFFFF.toInt()) }
-        val rbF = RadioButton(ctx).apply { text = "女"; setTextColor(0xFFFFFFFF.toInt()) }
-        val rbO = RadioButton(ctx).apply { text = "其他"; setTextColor(0xFFFFFFFF.toInt()) }
-        rg.addView(rbM); rg.addView(rbF); rg.addView(rbO)
+        val rbM = RadioButton(ctx).apply {
+            text = textMale
+            setTextColor(0xFFFFFFFF.toInt()) // 白色字體（因為深灰背景）
+            textSize = 16f
+        }
+        val rbF = RadioButton(ctx).apply {
+            text = textFemale
+            setTextColor(0xFFFFFFFF.toInt()) // 白色字體
+            textSize = 16f
+        }
+        val rbO = RadioButton(ctx).apply {
+            text = textOther
+            setTextColor(0xFFFFFFFF.toInt()) // 白色字體
+            textSize = 16f
+        }
+        rg.addView(rbM)
+        rg.addView(rbF)
+        rg.addView(rbO)
         when (curGenderId) {
-            R.id.rbMale   -> rg.check(rbM.id)
+            R.id.rbMale -> rg.check(rbM.id)
             R.id.rbFemale -> rg.check(rbF.id)
-            else -> { /* 不勾 */ }
+            else -> { }
+        }
+        root.addView(createSection(labelGender, rg))
+
+        // 出生年月日
+        val etBirthD = styledEditText(hintBirth, curBirth)
+        root.addView(createSection(labelBirth, etBirthD))
+
+        // 檢查項目
+        val etExamD = styledEditText(hintExam, curExam)
+        root.addView(createSection(labelExam, etExamD))
+
+        scrollView.addView(root)
+
+        val title = when (currentLanguage) {
+            LANG_ENGLISH -> if (curMrn.isNotBlank()) "$curMrn - Edit Data" else "Edit Data"
+            LANG_KOREAN -> if (curMrn.isNotBlank()) "$curMrn - 데이터 편집" else "데이터 편집"
+            else -> if (curMrn.isNotBlank()) "$curMrn - 編輯資料" else "編輯資料"
         }
 
-        val etBirthD = field("出生年月日（民國YYY/MM/DD 或 YYYY/MM/DD）", curBirth)
-        val etExamD  = field("檢查項目", curExam)
+        val btnSave = when (currentLanguage) {
+            LANG_ENGLISH -> "💾 Save"
+            LANG_KOREAN -> "💾 저장"
+            else -> "💾 儲存"
+        }
 
-        // 組裝
-        root.addView(label("病歷號"))
-        root.addView(etMrn)
-        root.addView(label("姓名"))
-        root.addView(etNameD)
-        root.addView(label("性別"))
-        root.addView(rg)
-        root.addView(label("出生年月日"))
-        root.addView(etBirthD)
-        root.addView(label("檢查項目"))
-        root.addView(etExamD)
-
-        // 標題：「病歷號-編輯資料」（若空白就用「編輯資料」）
-        val title = if (curMrn.isNotBlank()) "$curMrn-編輯資料" else "編輯資料"
+        val btnCancel = when (currentLanguage) {
+            LANG_ENGLISH -> "❌ Cancel"
+            LANG_KOREAN -> "❌ 취소"
+            else -> "❌ 取消"
+        }
 
         AlertDialog.Builder(ctx)
             .setTitle(title)
-            .setView(root)
-            .setPositiveButton("儲存") { dlg, _ ->
-                // 寫回主畫面欄位
+            .setView(scrollView)
+            .setPositiveButton(btnSave) { dlg, _ ->
                 etMedicalId.setText(etMrn.text?.toString()?.trim().orEmpty())
                 etName.setText(etNameD.text?.toString()?.trim().orEmpty())
 
                 when (rg.checkedRadioButtonId) {
                     rbM.id -> rgGender.check(R.id.rbMale)
                     rbF.id -> rgGender.check(R.id.rbFemale)
-                    else   -> rgGender.clearCheck()
+                    else -> rgGender.clearCheck()
                 }
 
-                // 生日：若輸入西元會自動轉民國（沿用你現有轉換函式）
                 val birthIn = etBirthD.text?.toString()?.trim().orEmpty()
                 etBirth.setText(toRocDateString(birthIn))
-
                 etExam.setText(etExamD.text?.toString()?.trim().orEmpty())
 
-                // 更新資料模型
-                currentPatientInfo = com.example.patientid.core.PatientInfo(
+                currentPatientInfo = PatientInfo(
                     name = etName.text?.toString()?.trim().orEmpty(),
                     birthDate = etBirth.text?.toString()?.trim().orEmpty(),
                     medicalId = etMedicalId.text?.toString()?.trim().orEmpty(),
-                    examType  = etExam.text?.toString()?.trim().orEmpty()
+                    examType = etExam.text?.toString()?.trim().orEmpty()
                 )
 
-                // 更新唯讀摘要
-                updateVerifySummary()
+                // ❌ 不再呼叫 updateVerifySummary()
                 dlg.dismiss()
             }
-            .setNegativeButton("取消", null)
+            .setNegativeButton(btnCancel, null)
             .show()
     }
 
-
-
-
-    // 4) 語系文字（Label / Hint / 性別）一起更新
     private fun updateUITexts() {
         when (currentLanguage) {
             LANG_ENGLISH -> {
                 btnTakePhoto.text = "Take Photo"
                 btnSelectImage.text = "Select Image"
                 btnReprocessImage.text = "Reprocess"
-                btnLanguage.text = "🌐 Language"   // 不寫死中或英，三語都通用
+                btnLanguage.text = "🌐 Language"
                 tvTitle.text = "Patient Verification System"
                 tvResultHeader.text = "Recognition Result"
                 tvPlaceholder.text = "Please take or select medical order photo"
@@ -484,7 +532,8 @@ class MainActivity : AppCompatActivity() {
                 etMedicalId.hint = "Unknown"
                 etBirth.hint = "Unknown (YYYY/MM/DD)"
 
-                rbMale.text = "Male"; rbFemale.text = "Female";
+                rbMale.text = "Male"
+                rbFemale.text = "Female"
                 if (textResult.text.isNullOrBlank()) textResult.text = "Waiting for image recognition..."
 
                 tvExamLabel.text = "Examination Items"
@@ -511,13 +560,14 @@ class MainActivity : AppCompatActivity() {
                 etMedicalId.hint = "인식되지 않음"
                 etBirth.hint = "인식되지 않음 (YYYY/MM/DD)"
 
-                rbMale.text = "남"; rbFemale.text = "여";
+                rbMale.text = "남"
+                rbFemale.text = "여"
                 if (textResult.text.isNullOrBlank()) textResult.text = "이미지 인식을 기다리는 중…"
 
                 tvExamLabel.text = "검사 항목"
                 etExam.hint = "인식되지 않음"
             }
-            else -> { // 中文
+            else -> {
                 btnTakePhoto.text = "拍攝醫令單"
                 btnSelectImage.text = "選擇圖片"
                 btnReprocessImage.text = "重新分析"
@@ -535,29 +585,25 @@ class MainActivity : AppCompatActivity() {
                 tvBirthLabel.text = "出生年月日"
                 etName.hint = "未辨識"
                 etMedicalId.hint = "未辨識"
-                etBirth.hint = "未辨識（YYYY/MM/DD）"
+                etBirth.hint = "未辨識(YYYY/MM/DD)"
 
-                rbMale.text = "男"; rbFemale.text = "女";
+                rbMale.text = "男"
+                rbFemale.text = "女"
                 if (textResult.text.isNullOrBlank()) textResult.text = "等待圖片識別..."
 
                 tvExamLabel.text = "檢查項目"
                 etExam.hint = "未辨識"
-
             }
         }
     }
 
-
-
     private fun showLanguageDialog() {
-        // 依目前語系，決定對話框標題語言
         val title = when (currentLanguage) {
             LANG_ENGLISH -> "Select Language"
-            LANG_KOREAN  -> "언어 선택"
-            else         -> "選擇語言"
+            LANG_KOREAN -> "언어 선택"
+            else -> "選擇語言"
         }
 
-        // 顯示三語選項（名稱本身各自使用該語言的自稱，較直覺）
         val languages = arrayOf("繁體中文", "English", "한국어")
 
         AlertDialog.Builder(this)
@@ -580,7 +626,6 @@ class MainActivity : AppCompatActivity() {
             }
             .show()
     }
-
 
     private fun requestPermissions() {
         val permissionsToRequest = mutableListOf<String>()
@@ -614,27 +659,20 @@ class MainActivity : AppCompatActivity() {
 
     private fun initializeServices() {
         initializeTTS()
-        // 【修改】停用語音辨識初始化
-        // initializeSpeechRecognizer()  // <- 移除或註解掉
     }
-
 
     private fun initializeTTS() {
         try {
             tts?.shutdown()
-            // 可選：強制使用 Google TTS 引擎（若你確定裝置有）
-            // tts = TextToSpeech(this, { status -> ... }, "com.google.android.tts")
             tts = TextToSpeech(this) { status ->
                 if (status == TextToSpeech.SUCCESS) {
                     val targetLocale = when (currentLanguage) {
                         LANG_ENGLISH -> Locale.US
-                        LANG_KOREAN  -> Locale.KOREAN
-                        else          -> Locale.TRADITIONAL_CHINESE
+                        LANG_KOREAN -> Locale.KOREAN
+                        else -> Locale.TRADITIONAL_CHINESE
                     }
 
-                    // 先嘗試挑選符合語系的 Voice（通常比 setLanguage 更精準）
                     val koVoice = tts?.voices?.firstOrNull { v ->
-                        // 只要語言為 ko（或完整地區碼如 ko_KR），且品質與延遲達到一般水準
                         v.locale?.language?.equals(targetLocale.language, ignoreCase = true) == true &&
                                 v.quality >= android.speech.tts.Voice.QUALITY_NORMAL &&
                                 v.latency <= android.speech.tts.Voice.LATENCY_NORMAL
@@ -642,29 +680,28 @@ class MainActivity : AppCompatActivity() {
 
                     val langResult = if (koVoice != null && currentLanguage == LANG_KOREAN) {
                         tts?.voice = koVoice
-                        TextToSpeech.LANG_AVAILABLE // 代表我們用 voice 直接設定，視為可用
+                        TextToSpeech.LANG_AVAILABLE
                     } else {
                         tts?.setLanguage(targetLocale)
                     }
 
                     if (langResult == TextToSpeech.LANG_MISSING_DATA || langResult == TextToSpeech.LANG_NOT_SUPPORTED) {
-                        // 嘗試引導使用者安裝對應語音資料
                         try {
                             val installIntent = Intent(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA)
                             startActivity(installIntent)
                             showToast(
                                 when (currentLanguage) {
                                     LANG_ENGLISH -> "Korean TTS data not installed. Please install and retry."
-                                    LANG_KOREAN  -> "한국어 TTS 데이터가 설치되어 있지 않습니다. 설치 후 다시 시도하세요."
-                                    else         -> "尚未安裝韓文語音資料，請安裝後再試。"
+                                    LANG_KOREAN -> "한국어 TTS 데이터가 설치되어 있지 않습니다. 설치 후 다시 시도하세요."
+                                    else -> "尚未安裝韓文語音資料,請安裝後再試。"
                                 }
                             )
                         } catch (_: Exception) {
                             showToast(
                                 when (currentLanguage) {
                                     LANG_ENGLISH -> "Korean TTS not supported on this device."
-                                    LANG_KOREAN  -> "이 기기에서 한국어 TTS를 지원하지 않습니다."
-                                    else         -> "此裝置不支援韓文語音。"
+                                    LANG_KOREAN -> "이 기기에서 한국어 TTS를 지원하지 않습니다."
+                                    else -> "此裝置不支援韓文語音。"
                                 }
                             )
                         }
@@ -682,8 +719,8 @@ class MainActivity : AppCompatActivity() {
                         showToast(
                             when (currentLanguage) {
                                 LANG_ENGLISH -> "TTS initialization failed"
-                                LANG_KOREAN  -> "TTS 초기화 실패"
-                                else         -> "語音系統初始化失敗"
+                                LANG_KOREAN -> "TTS 초기화 실패"
+                                else -> "語音系統初始化失敗"
                             }
                         )
                     }
@@ -693,14 +730,12 @@ class MainActivity : AppCompatActivity() {
             showToast(
                 when (currentLanguage) {
                     LANG_ENGLISH -> "TTS initialization failed"
-                    LANG_KOREAN  -> "TTS 초기화 실패"
-                    else         -> "語音系統初始化失敗"
+                    LANG_KOREAN -> "TTS 초기화 실패"
+                    else -> "語音系統初始化失敗"
                 }
             )
         }
     }
-
-
 
     private fun initializeSpeechRecognizer() {
         try {
@@ -726,7 +761,7 @@ class MainActivity : AppCompatActivity() {
             requestPermissions(); return
         }
         try {
-            val photoFile = createImageFile() // wrapper -> ImageKit
+            val photoFile = createImageFile()
             photoUri = FileProvider.getUriForFile(this, "${packageName}.fileprovider", photoFile)
             val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply { putExtra(MediaStore.EXTRA_OUTPUT, photoUri) }
             if (intent.resolveActivity(packageManager) != null) takePhotoLauncher.launch(intent)
@@ -751,7 +786,7 @@ class MainActivity : AppCompatActivity() {
     private fun reprocessCurrentImage() {
         currentBitmap?.let { bitmap ->
             if (!bitmap.isRecycled) processImage(bitmap)
-            else showToast(if (currentLanguage == LANG_CHINESE) "圖片已被回收，請重新選擇" else "Image has been recycled, please select again")
+            else showToast(if (currentLanguage == LANG_CHINESE) "圖片已被回收,請重新選擇" else "Image has been recycled, please select again")
         } ?: showToast(if (currentLanguage == LANG_CHINESE) "請先選擇或拍攝圖片" else "Please select or take a photo first")
     }
 
@@ -783,7 +818,7 @@ class MainActivity : AppCompatActivity() {
         if (result.resultCode == Activity.RESULT_OK) {
             result.data?.data?.let { uri ->
                 try {
-                    val bitmap = getBitmapFromUri(uri) // wrapper -> ImageKit
+                    val bitmap = getBitmapFromUri(uri)
                     currentBitmap?.recycle()
                     currentBitmap = bitmap
                     setImageAndHidePlaceholder(bitmap)
@@ -791,7 +826,7 @@ class MainActivity : AppCompatActivity() {
                     processImage(bitmap)
                 } catch (e: Exception) {
                     Log.e(TAG, "處理選擇的圖片時發生錯誤", e)
-                    showToast(if (currentLanguage == LANG_CHINESE) "處理選擇的圖片時發生錯誤：${e.message}" else "Error processing selected image: ${e.message}")
+                    showToast(if (currentLanguage == LANG_CHINESE) "處理選擇的圖片時發生錯誤:${e.message}" else "Error processing selected image: ${e.message}")
                 }
             }
         }
@@ -803,8 +838,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun processImage(bitmap: Bitmap) {
-        if (isProcessing) { Log.w(TAG, "圖片處理中，忽略重複請求"); return }
-        if (bitmap.isRecycled) { showToast(if (currentLanguage == LANG_CHINESE) "圖片已被回收，請重新選擇" else "Image has been recycled, please select again"); return }
+        if (isProcessing) { Log.w(TAG, "圖片處理中,忽略重複請求"); return }
+        if (bitmap.isRecycled) { showToast(if (currentLanguage == LANG_CHINESE) "圖片已被回收,請重新選擇" else "Image has been recycled, please select again"); return }
 
         isProcessing = true
         showProgressDialog(if (currentLanguage == LANG_CHINESE) "正在分析圖片..." else "Analyzing image...")
@@ -820,7 +855,7 @@ class MainActivity : AppCompatActivity() {
                 }
         } catch (e: Exception) {
             Log.e(TAG, "圖片處理發生異常", e)
-            handleOCRFailure(if (currentLanguage == LANG_CHINESE) "圖片處理異常：${e.message}" else "Image processing error: ${e.message}")
+            handleOCRFailure(if (currentLanguage == LANG_CHINESE) "圖片處理異常:${e.message}" else "Image processing error: ${e.message}")
         }
     }
 
@@ -828,7 +863,6 @@ class MainActivity : AppCompatActivity() {
         try {
             val fullText = visionText.text ?: ""
             val nameSmart = OcrExtractors.extractNameSmart(visionText, fullText)
-            // ★ 新增：把智慧抓到的姓名記起來，給後續 handleOCRSuccess 覆蓋使用
             if (!nameSmart.isNullOrBlank()) {
                 lastSmartName = nameSmart
             }
@@ -849,8 +883,8 @@ class MainActivity : AppCompatActivity() {
             }
 
             if (currentLanguage == LANG_ENGLISH) {
-                sb.append("Examination Items（Combine Version）:\n")
-                if (unifiedExamItems.isEmpty()) sb.append("（None）\n") else unifiedExamItems.forEach { sb.append(it).append("\n") }
+                sb.append("Examination Items(Combine Version):\n")
+                if (unifiedExamItems.isEmpty()) sb.append("(None)\n") else unifiedExamItems.forEach { sb.append(it).append("\n") }
                 sb.append("\n")
                 sb.append("OCR Full Text:\n").append(fullText.ifEmpty { "(No text recognition result)" }).append("\n\n")
                 sb.append("Extracted Fields (Line by Line):\n")
@@ -866,20 +900,20 @@ class MainActivity : AppCompatActivity() {
                 sb.append("Examination Items (Code Merged Version):\n")
                 if (examItems.isEmpty()) sb.append("(None)\n") else examItems.forEach { sb.append(it).append("\n") }
             } else {
-                sb.append("檢查部位（整合版）:\n")
-                if (unifiedExamItems.isEmpty()) sb.append("（無）\n") else unifiedExamItems.forEach { sb.append(it).append("\n") }
+                sb.append("檢查部位(整合版):\n")
+                if (unifiedExamItems.isEmpty()) sb.append("(無)\n") else unifiedExamItems.forEach { sb.append(it).append("\n") }
                 sb.append("\n")
                 sb.append("OCR 全文:\n").append(fullText.ifEmpty { "(無文字辨識結果)" }).append("\n\n")
-                sb.append("抽取欄位（逐行）:\n")
-                if (fieldsLine.isEmpty()) sb.append("（無）\n") else fieldsLine.forEach { (k, v) -> sb.append("$k: $v\n") }
+                sb.append("抽取欄位(逐行):\n")
+                if (fieldsLine.isEmpty()) sb.append("(無)\n") else fieldsLine.forEach { (k, v) -> sb.append("$k: $v\n") }
                 sb.append("\n")
-                sb.append("抽取欄位（區塊）:\n")
-                if (fieldsBlock.isEmpty()) sb.append("（無）\n") else fieldsBlock.forEach { (k, v) -> sb.append("$k: $v\n") }
+                sb.append("抽取欄位(區塊):\n")
+                if (fieldsBlock.isEmpty()) sb.append("(無)\n") else fieldsBlock.forEach { (k, v) -> sb.append("$k: $v\n") }
                 sb.append("\n")
-                sb.append("檢查部位（自訂規則）:\n")
-                if (fieldsCustom["檢查部位"].isNullOrEmpty()) sb.append("（無）\n") else sb.append(fieldsCustom["檢查部位"]).append("\n\n")
-                sb.append("檢查部位（代碼合併版）:\n")
-                if (examItems.isEmpty()) sb.append("（無）\n") else examItems.forEach { sb.append(it).append("\n") }
+                sb.append("檢查部位(自訂規則):\n")
+                if (fieldsCustom["檢查部位"].isNullOrEmpty()) sb.append("(無)\n") else sb.append(fieldsCustom["檢查部位"]).append("\n\n")
+                sb.append("檢查部位(代碼合併版):\n")
+                if (examItems.isEmpty()) sb.append("(無)\n") else examItems.forEach { sb.append(it).append("\n") }
             }
             handleOCRSuccess(sb.toString())
         } catch (e: Exception) {
@@ -888,13 +922,9 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-
-
-    // 將「民國069/01/29」轉為「069/01/29」；也能把「69/1/29」補零為「069/01/29」
     private fun rocForUi(input: String?): String {
         if (input.isNullOrBlank()) return ""
         val s = input.trim()
-        // 先抓出年/月/日，不論是否有「民國」前綴或不同分隔符
         val m = Regex("""(?:民國)?\s*(\d{1,3})[./\-年]?(\d{1,2})[./\-月]?(\d{1,2})""").find(s) ?: return s
         val y = m.groupValues[1].toIntOrNull() ?: return s
         val mm = m.groupValues[2].toIntOrNull() ?: return s
@@ -902,19 +932,10 @@ class MainActivity : AppCompatActivity() {
         return "%03d/%02d/%02d".format(y, mm, dd)
     }
 
-
-
-    // 5) OCR 成功：塞欄位時若值等於占位詞 → 以 hint 呈現、EditText 內容保持空白
-    // =========================================
-// 1) 生日轉民國年 (YYYY/MM/DD -> 民國YYY/MM/DD)
-//    - 若已含「民國」字樣或看起來像民國年，會盡量保留/修正成標準格式
-// =========================================
-// 生日 → 民國年
     private fun toRocDateString(input: String?): String {
         if (input.isNullOrBlank()) return ""
         val raw = input.trim()
 
-        // 已寫「民國」
         Regex("""民國\s*(\d{1,3})[./\-年]?(\d{1,2})[./\-月]?(\d{1,2})""").find(raw)?.let { m ->
             val y = m.groupValues[1].toIntOrNull() ?: return raw
             val mm = m.groupValues[2].toIntOrNull() ?: return raw
@@ -922,7 +943,6 @@ class MainActivity : AppCompatActivity() {
             return "民國%03d/%02d/%02d".format(y, mm, dd)
         }
 
-        // 西元 4 位年
         Regex("""(\d{4})[./\-年]?(\d{1,2})[./\-月]?(\d{1,2})""").find(raw)?.let { m ->
             val yyyy = m.groupValues[1].toIntOrNull() ?: return raw
             val mm = m.groupValues[2].toIntOrNull() ?: return raw
@@ -931,7 +951,6 @@ class MainActivity : AppCompatActivity() {
             return if (roc > 0) "民國%03d/%02d/%02d".format(roc, mm, dd) else raw
         }
 
-        // 2~3 位年（視為民國年，例如 069/01/29）
         Regex("""(\d{2,3})[./\-年]?(\d{1,2})[./\-月]?(\d{1,2})""").find(raw)?.let { m ->
             val y = m.groupValues[1].toIntOrNull() ?: return raw
             val mm = m.groupValues[2].toIntOrNull() ?: return raw
@@ -942,54 +961,40 @@ class MainActivity : AppCompatActivity() {
         return raw
     }
 
-    // =========================================
-// 2) 從整段 OCR 結果字串推斷性別並勾選 RadioGroup
-//    - 支援中英常見字樣
-// =========================================
     private fun selectGenderFromText(fullText: String) {
         val t = fullText.lowercase()
-        // 常見關鍵字（含：性別:男 / 女；male/female；M/F）
-        val isMale = Regex("""(性別[:：]?\s*男)\b|(^|[^a-z])male([^a-z]|$)|\bsex[:：]?\s*m\b""").containsMatchIn(t)
-                || Regex("""\b\s*m\b""").containsMatchIn(t) && t.contains("sex") // e.g., Sex: M
+        val isMale = Regex("""(性別[::]?\s*男)\b|(^|[^a-z])male([^a-z]|$)|\bsex[::]?\s*m\b""").containsMatchIn(t)
+                || Regex("""\b\s*m\b""").containsMatchIn(t) && t.contains("sex")
 
-        val isFemale = Regex("""(性別[:：]?\s*女)\b|(^|[^a-z])female([^a-z]|$)|\bsex[:：]?\s*f\b""").containsMatchIn(t)
-                || Regex("""\b\s*f\b""").containsMatchIn(t) && t.contains("sex") // e.g., Sex: F
+        val isFemale = Regex("""(性別[::]?\s*女)\b|(^|[^a-z])female([^a-z]|$)|\bsex[::]?\s*f\b""").containsMatchIn(t)
+                || Regex("""\b\s*f\b""").containsMatchIn(t) && t.contains("sex")
 
         when {
             isMale -> rgGender.check(R.id.rbMale)
             isFemale -> rgGender.check(R.id.rbFemale)
-            else -> {
-                // 偵測不到→保留原狀（不強制選擇）
-                rgGender.clearCheck()
-            }
+            else -> rgGender.clearCheck()
         }
     }
 
-    // 從「原始 OCR 全文」抓生日：先找含 生日/出生 的行，再抓日期
     private fun extractBirthFromFullText(fullText: String): String? {
         if (fullText.isBlank()) return null
         val lines = fullText.split("\n").map { it.trim() }.filter { it.isNotEmpty() }
 
-        // 先找帶標籤的行
         val labelLines = lines.filter { it.contains("生日") || it.contains("出生") || it.contains("DOB", true) }
         val datePattern = Regex("""(民國\s*\d{1,3}[./\-]\d{1,2}[./\-]\d{1,2}|\d{4}[./\-]\d{1,2}[./\-]\d{1,2}|\d{2,3}[./\-]\d{1,2}[./\-]\d{1,2})""")
 
         labelLines.forEach { line ->
-            datePattern.find(line.replace("＝","=").replace("：",":"))?.let { m ->
+            datePattern.find(line.replace("=","=").replace(":",""))?.let { m ->
                 return toRocDateString(m.value)
             }
         }
 
-        // 沒抓到就全域找一次日期
         datePattern.find(fullText)?.let { m -> return toRocDateString(m.value) }
         return null
     }
 
-
-
     private var lastSmartName: String? = null
 
-    // OCR 成功：用原始全文抓生日/性別；欄位顯示在「人工核對面板」上，並把生日(民國)回寫到 currentPatientInfo
     private fun handleOCRSuccess(recognizedText: String) {
         hideProgressDialog()
         resetProcessingState()
@@ -998,10 +1003,8 @@ class MainActivity : AppCompatActivity() {
         val rawBirth = extractBirthFromFullText(lastOcrFullText)
         val rocBirth = if (!rawBirth.isNullOrBlank()) toRocDateString(rawBirth) else ""
 
-        // 用原始全文建立 patientInfo
         val parsed0 = extractPatientInfo(lastOcrFullText)
 
-        // ★ 覆蓋姓名：若 smart 版本比較可信（非空、非「未辨識/Unknown」），就取代
         val betterName = lastSmartName?.takeIf { it.isNotBlank() } ?: ""
         val parsed = if (parsed0 != null) {
             parsed0.copy(name = if (betterName.isNotBlank()) betterName else parsed0.name)
@@ -1017,7 +1020,7 @@ class MainActivity : AppCompatActivity() {
         llVerifyPanel.visibility = View.VISIBLE
 
         if (parsed != null) {
-            currentPatientInfo = com.example.patientid.core.PatientInfo(
+            currentPatientInfo = PatientInfo(
                 name = if (betterName.isNotBlank()) betterName else parsed.name,
                 birthDate = if (rocBirth.isNotBlank()) rocBirth else parsed.birthDate,
                 medicalId = parsed.medicalId,
@@ -1028,55 +1031,50 @@ class MainActivity : AppCompatActivity() {
             for (i in 0 until rgGender.childCount) rgGender.getChildAt(i).isEnabled = false
 
             putField(currentPatientInfo?.medicalId, etMedicalId, "未辨識", "Unknown")
-            putField(currentPatientInfo?.name,      etName,      "未辨識", "Unknown")
+            putField(currentPatientInfo?.name, etName, "未辨識", "Unknown")
 
             val uiBirth = rocForUi(currentPatientInfo?.birthDate ?: "")
-            putField(uiBirth, etBirth, "未辨識（民國YYY/MM/DD）", "Unknown (ROC YYY/MM/DD)")
+            putField(uiBirth, etBirth, "未辨識(民國YYY/MM/DD)", "Unknown (ROC YYY/MM/DD)")
 
             selectGenderFromText(lastOcrFullText)
 
-            updateVerifySummary()
+            // ❌ 不再呼叫 updateVerifySummary()
 
-            // MainActivity.kt（handleOCRSuccess 內，準備語音之前）
             val uiExam = etExam.text?.toString()?.trim().orEmpty()
             if (uiExam.isNotEmpty()) {
                 currentPatientInfo = currentPatientInfo?.copy(examType = uiExam)
             }
             currentPatientInfo?.let { info ->
-                val speechText = com.example.patientid.speechtext.SpeechText.build(info, currentLanguage)
+                val speechText = SpeechText.build(info, currentLanguage)
                 speakText(speechText)
             }
         } else {
-            currentPatientInfo = com.example.patientid.core.PatientInfo("","","","")
+            currentPatientInfo = PatientInfo("","","","")
             etName.isEnabled = true; etBirth.isEnabled = true; etMedicalId.isEnabled = true
             for (i in 0 until rgGender.childCount) rgGender.getChildAt(i).isEnabled = true
 
             putField("", etMedicalId, "未辨識", "Unknown")
             putField(betterName, etName, "未辨識", "Unknown")
             val uiBirth = rocForUi(rocBirth)
-            putField(uiBirth, etBirth, "未辨識（民國YYY/MM/DD）", "Unknown (ROC YYY/MM/DD)")
+            putField(uiBirth, etBirth, "未辨識(民國YYY/MM/DD)", "Unknown (ROC YYY/MM/DD)")
             rgGender.clearCheck()
 
-            updateVerifySummary()
+            // ❌ 不再呼叫 updateVerifySummary()
 
             val fallback = if (currentLanguage == LANG_CHINESE)
-                "目前無法從影像中明確辨識姓名、生日或病歷號，請手動輸入後按「確認」。"
+                "目前無法從影像中明確辨識姓名、生日或病歷號,請手動輸入後按「確認」。"
             else
                 "We couldn't clearly recognize your name, date of birth, or medical ID. Please enter them manually and press Confirm."
             speakText(fallback)
         }
     }
 
-
-
-
-
     private fun handleOCRFailure(errorMessage: String) {
         hideProgressDialog()
         resetProcessingState()
-        val message = if (currentLanguage == LANG_CHINESE) "圖片識別失敗：$errorMessage" else "Image recognition failed: $errorMessage"
+        val message = if (currentLanguage == LANG_CHINESE) "圖片識別失敗:$errorMessage" else "Image recognition failed: $errorMessage"
         showToast(message)
-        textResult.text = if (currentLanguage == LANG_CHINESE) "識別失敗，請重新嘗試" else "Recognition failed, please try again"
+        textResult.text = if (currentLanguage == LANG_CHINESE) "識別失敗,請重新嘗試" else "Recognition failed, please try again"
     }
 
     private fun speakText(text: String) {
@@ -1085,12 +1083,11 @@ class MainActivity : AppCompatActivity() {
         tts?.speak(text, TextToSpeech.QUEUE_FLUSH, Bundle(), "patient_verification")
     }
 
-
     private fun showSpeechRecognitionDialog() {
         dismissSpeechDialog()
         val dialogMessage = if (currentLanguage == LANG_CHINESE) {
             currentPatientInfo?.let { info ->
-                "正在播放病患資訊確認...\n\n姓名：${info.name}\n出生日期：${info.birthDate}\n病歷號：${info.medicalId}\n\n請聽完語音後回應「是」或「正確」進行確認"
+                "正在播放病患資訊確認...\n\n姓名:${info.name}\n出生日期:${info.birthDate}\n病歷號:${info.medicalId}\n\n請聽完語音後回應「是」或「正確」進行確認"
             } ?: "正在進行語音確認..."
         } else {
             currentPatientInfo?.let { info ->
@@ -1128,7 +1125,7 @@ class MainActivity : AppCompatActivity() {
                     speechDialog?.setMessage(
                         if (currentLanguage == LANG_CHINESE) {
                             currentPatientInfo?.let { info ->
-                                "病患資訊：\n姓名：${info.name}\n出生日期：${info.birthDate}\n病歷號：${info.medicalId}\n\n🎤 正在聆聽您的回應...\n請說「是」或「正確」確認資料"
+                                "病患資訊:\n姓名:${info.name}\n出生日期:${info.birthDate}\n病歷號:${info.medicalId}\n\n🎤 正在聆聽您的回應...\n請說「是」或「正確」確認資料"
                             } ?: "🎤 正在聆聽您的回應..."
                         } else {
                             currentPatientInfo?.let { info ->
@@ -1147,13 +1144,13 @@ class MainActivity : AppCompatActivity() {
                     val isConfirmed = confirmWords.any { userResponse.contains(it) }
                     runOnUiThread {
                         dismissSpeechDialog()
-                        if (isConfirmed) { showToast(if (currentLanguage == LANG_CHINESE) "病患資料核對成功！" else "Patient information verified successfully!"); handleVerificationSuccess() }
+                        if (isConfirmed) { showToast(if (currentLanguage == LANG_CHINESE) "病患資料核對成功!" else "Patient information verified successfully!"); handleVerificationSuccess() }
                         else { showToast(if (currentLanguage == LANG_CHINESE) "請重新確認資料或重新掃描" else "Please reconfirm information or rescan") }
                     }
                 } else {
                     runOnUiThread {
                         dismissSpeechDialog()
-                        val message = if (currentLanguage == LANG_CHINESE) "未能識別語音，請再次嘗試" else "Unable to recognize speech, please try again"
+                        val message = if (currentLanguage == LANG_CHINESE) "未能識別語音,請再次嘗試" else "Unable to recognize speech, please try again"
                         showToast(message)
                     }
                 }
@@ -1173,7 +1170,7 @@ class MainActivity : AppCompatActivity() {
                 }
                 runOnUiThread {
                     dismissSpeechDialog()
-                    val msg = if (currentLanguage == LANG_CHINESE) "語音識別失敗: $errorMessage，請重新嘗試" else "Speech recognition failed: $errorMessage, please try again"
+                    val msg = if (currentLanguage == LANG_CHINESE) "語音識別失敗: $errorMessage,請重新嘗試" else "Speech recognition failed: $errorMessage, please try again"
                     showToast(msg)
                 }
             }
@@ -1192,56 +1189,51 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // 取代原本會 append 到 textResult 的版本：改為叫出彈窗
     private fun handleVerificationSuccess() {
         currentPatientInfo?.let { info ->
             showVerificationSuccessDialog(info)
         }
     }
 
-    // 新增：驗證成功彈出視窗（中英支援）
     private fun showVerificationSuccessDialog(info: PatientInfo) {
         val title = if (currentLanguage == LANG_ENGLISH) "Verification Successful" else "驗證成功"
         val ok = if (currentLanguage == LANG_ENGLISH) "OK" else "知道了"
 
-        // 生日已在 currentPatientInfo 內是民國格式（例如 民國069/01/29）
-        // 顯示時若你想去掉「民國」兩字，可用你現有的 rocForUi(info.birthDate)
         val birthForDialog = info.birthDate
 
         val msg = if (currentLanguage == LANG_ENGLISH) {
             buildString {
                 append("Patient verification completed\n")
+                append("Medical ID: ${info.medicalId}\n")
                 append("Name: ${info.name}\n")
                 append("Date of birth: ${info.birthDate}\n")
-                append("Medical ID: ${info.medicalId}\n")
                 append("Examination: ${info.examType}")
             }
         } else if (currentLanguage == LANG_KOREAN) {
             buildString {
                 append("환자 신원 확인 완료\n")
+                append("환자 번호: ${info.medicalId}\n")
                 append("이름: ${info.name}\n")
                 append("생년월일: ${info.birthDate}\n")
-                append("환자 번호: ${info.medicalId}\n")
                 append("검사 항목: ${info.examType}")
             }
         } else {
             buildString {
-                append("病患身份驗證完成\n")
+                append("【病患身份驗證完成】\n")
+                append("病歷號：${info.medicalId}\n")
                 append("姓名：${info.name}\n")
                 append("出生日期：${info.birthDate}\n")
-                append("病歷號：${info.medicalId}\n")
                 append("檢查項目：${info.examType}")
             }
         }
 
-        androidx.appcompat.app.AlertDialog.Builder(this)
+        AlertDialog.Builder(this)
             .setTitle(title)
             .setMessage(msg)
             .setCancelable(true)
             .setPositiveButton(ok) { dialog, _ -> dialog.dismiss() }
             .show()
     }
-
 
     private fun showProgressDialog(message: String) { hideProgressDialog(); progressDialog = ProgressDialog(this).apply { setMessage(message); setCancelable(false); show() } }
     private fun hideProgressDialog() { progressDialog?.dismiss(); progressDialog = null }
