@@ -63,6 +63,14 @@ class MainActivity : AppCompatActivity() {
     }
 
 
+    // 唯讀摘要 TextView
+    private lateinit var tvSummaryMrn: TextView
+    private lateinit var tvSummaryName: TextView
+    private lateinit var tvSummaryGender: TextView
+    private lateinit var tvSummaryBirth: TextView
+    private lateinit var tvSummaryExam: TextView
+
+
 
     // === 新增：在 UI Components 區塊加入新元件 ===
     private lateinit var llVerifyPanel: LinearLayout
@@ -195,9 +203,37 @@ class MainActivity : AppCompatActivity() {
     }
 
 
+    private fun updateVerifySummary() {
+        // 來源：以目前欄位內容為準（若 currentPatientInfo 存在也可取用）
+        val mrn = etMedicalId.text?.toString()?.trim().orEmpty()
+        val name = etName.text?.toString()?.trim().orEmpty()
+        val gender = when (rgGender.checkedRadioButtonId) {
+            R.id.rbMale   -> rbMale.text?.toString() ?: ""
+            R.id.rbFemale -> rbFemale.text?.toString() ?: ""
+            R.id.rbOther  -> rbOther.text?.toString() ?: ""
+            else -> ""
+        }
+        val birth = etBirth.text?.toString()?.trim().orEmpty()
+        val exam  = etExam.text?.toString()?.trim().orEmpty()
+
+        tvSummaryMrn.text    = "病歷號：${mrn}"
+        tvSummaryName.text   = "姓名：${name}"
+        tvSummaryGender.text = "性別：${gender}"
+        tvSummaryBirth.text  = "出生年月日：${birth}"
+        tvSummaryExam.text   = "檢查項目：${exam}"
+    }
+
+
     // ====== 其餘內容：完全沿用你現有 MainActivity（未改動邏輯） ======
 
     private fun initializeUI() {
+
+        tvSummaryMrn   = findViewById(R.id.tvSummaryMrn)
+        tvSummaryName  = findViewById(R.id.tvSummaryName)
+        tvSummaryGender= findViewById(R.id.tvSummaryGender)
+        tvSummaryBirth = findViewById(R.id.tvSummaryBirth)
+        tvSummaryExam  = findViewById(R.id.tvSummaryExam)
+
         // --- 原有 findViewById ---
         imageView = findViewById(R.id.imageView)
         textResult = findViewById(R.id.textResult)
@@ -304,28 +340,9 @@ class MainActivity : AppCompatActivity() {
 
         // --- 行為：修改鍵＝切換欄位可編輯狀態與文字 ---
         btnEditToggle.setOnClickListener {
-            val enable = !etName.isEnabled
-            etName.isEnabled = enable
-            etBirth.isEnabled = enable
-            etMedicalId.isEnabled = enable
-            etExam.isEnabled = enable
-            for (i in 0 until rgGender.childCount) rgGender.getChildAt(i).isEnabled = enable
-
-            if (enable) {
-                // 進入可編輯：若欄位是「未辨識/Unknown」→ 自動清空，避免殘留
-                val zh = "未辨識"; val en = "Unknown"
-                if (etName.text?.toString() == zh || etName.text?.toString() == en) etName.setText("")
-                if (etBirth.text?.toString() == zh || etBirth.text?.toString() == en) etBirth.setText("")
-                if (etMedicalId.text?.toString() == zh || etMedicalId.text?.toString() == en) etMedicalId.setText("")
-                if (etExam.text?.toString() == zh || etExam.text?.toString() == en) etExam.setText("")
-            }
-
-            btnEditToggle.text = if (enable) {
-                if (currentLanguage == LANG_ENGLISH) "✏️ Editing…" else "✏️ 編輯中…"
-            } else {
-                if (currentLanguage == LANG_ENGLISH) "✏️ Edit" else "✏️ 修改"
-            }
+            showEditDialog()
         }
+
 
         // --- 其他按鈕（原行為保留） ---
         btnTakePhoto.setOnClickListener { handleTakePhoto() }
@@ -341,6 +358,109 @@ class MainActivity : AppCompatActivity() {
     }
 
 
+    private fun showEditDialog() {
+        // 目前值
+        val curMrn   = etMedicalId.text?.toString()?.trim().orEmpty()
+        val curName  = etName.text?.toString()?.trim().orEmpty()
+        val curBirth = etBirth.text?.toString()?.trim().orEmpty()
+        val curExam  = etExam.text?.toString()?.trim().orEmpty()
+        val curGenderId = rgGender.checkedRadioButtonId
+
+        // 容器（暗底）
+        val ctx = this
+        val pad = (16 * resources.displayMetrics.density).toInt()
+        val root = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(pad, pad, pad, pad)
+            setBackgroundColor(0xFF1E1E1E.toInt()) // 深色背景
+        }
+
+        fun label(text: String): TextView = TextView(ctx).apply {
+            this.text = text
+            setTextColor(0xFFFFFFFF.toInt()) // 白字
+            textSize = 14f
+        }
+        fun field(hint: String, value: String): EditText = EditText(ctx).apply {
+            setText(value)
+            this.hint = hint
+            setTextColor(0xFFFFFFFF.toInt())
+            setHintTextColor(0x80FFFFFF.toInt())
+            setBackgroundResource(android.R.drawable.edit_text)
+            setPadding(pad / 2, pad / 2, pad / 2, pad / 2)
+        }
+
+        // 欄位順序：病歷號、姓名、性別、出生年月日、檢查項目
+        val etMrn   = field("病歷號", curMrn)
+        val etNameD = field("姓名", curName)
+
+        val rg = RadioGroup(ctx).apply {
+            orientation = RadioGroup.HORIZONTAL
+        }
+        val rbM = RadioButton(ctx).apply { text = "男"; setTextColor(0xFFFFFFFF.toInt()) }
+        val rbF = RadioButton(ctx).apply { text = "女"; setTextColor(0xFFFFFFFF.toInt()) }
+        val rbO = RadioButton(ctx).apply { text = "其他"; setTextColor(0xFFFFFFFF.toInt()) }
+        rg.addView(rbM); rg.addView(rbF); rg.addView(rbO)
+        when (curGenderId) {
+            R.id.rbMale   -> rg.check(rbM.id)
+            R.id.rbFemale -> rg.check(rbF.id)
+            R.id.rbOther  -> rg.check(rbO.id)
+            else -> { /* 不勾 */ }
+        }
+
+        val etBirthD = field("出生年月日（民國YYY/MM/DD 或 YYYY/MM/DD）", curBirth)
+        val etExamD  = field("檢查項目", curExam)
+
+        // 組裝
+        root.addView(label("病歷號"))
+        root.addView(etMrn)
+        root.addView(label("姓名"))
+        root.addView(etNameD)
+        root.addView(label("性別"))
+        root.addView(rg)
+        root.addView(label("出生年月日"))
+        root.addView(etBirthD)
+        root.addView(label("檢查項目"))
+        root.addView(etExamD)
+
+        // 標題：「病歷號-編輯資料」（若空白就用「編輯資料」）
+        val title = if (curMrn.isNotBlank()) "$curMrn-編輯資料" else "編輯資料"
+
+        AlertDialog.Builder(ctx)
+            .setTitle(title)
+            .setView(root)
+            .setPositiveButton("儲存") { dlg, _ ->
+                // 寫回主畫面欄位
+                etMedicalId.setText(etMrn.text?.toString()?.trim().orEmpty())
+                etName.setText(etNameD.text?.toString()?.trim().orEmpty())
+
+                when (rg.checkedRadioButtonId) {
+                    rbM.id -> rgGender.check(R.id.rbMale)
+                    rbF.id -> rgGender.check(R.id.rbFemale)
+                    rbO.id -> rgGender.check(R.id.rbOther)
+                    else   -> rgGender.clearCheck()
+                }
+
+                // 生日：若輸入西元會自動轉民國（沿用你現有轉換函式）
+                val birthIn = etBirthD.text?.toString()?.trim().orEmpty()
+                etBirth.setText(toRocDateString(birthIn))
+
+                etExam.setText(etExamD.text?.toString()?.trim().orEmpty())
+
+                // 更新資料模型
+                currentPatientInfo = com.example.patientid.core.PatientInfo(
+                    name = etName.text?.toString()?.trim().orEmpty(),
+                    birthDate = etBirth.text?.toString()?.trim().orEmpty(),
+                    medicalId = etMedicalId.text?.toString()?.trim().orEmpty(),
+                    examType  = etExam.text?.toString()?.trim().orEmpty()
+                )
+
+                // 更新唯讀摘要
+                updateVerifySummary()
+                dlg.dismiss()
+            }
+            .setNegativeButton("取消", null)
+            .show()
+    }
 
 
 
@@ -919,6 +1039,8 @@ class MainActivity : AppCompatActivity() {
 
             selectGenderFromText(lastOcrFullText)
 
+            updateVerifySummary()
+
             // MainActivity.kt（handleOCRSuccess 內，準備語音之前）
             val uiExam = etExam.text?.toString()?.trim().orEmpty()
             if (uiExam.isNotEmpty()) {
@@ -938,6 +1060,8 @@ class MainActivity : AppCompatActivity() {
             val uiBirth = rocForUi(rocBirth)
             putField(uiBirth, etBirth, "未辨識（民國YYY/MM/DD）", "Unknown (ROC YYY/MM/DD)")
             rgGender.clearCheck()
+
+            updateVerifySummary()
 
             val fallback = if (currentLanguage == LANG_CHINESE)
                 "目前無法從影像中明確辨識姓名、生日或病歷號，請手動輸入後按「確認」。"
