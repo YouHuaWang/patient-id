@@ -510,6 +510,18 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateUITexts() {
+
+        fun setPlaceholderIfNeeded(target: TextView, localized: String) {
+            val current = target.text?.toString()?.trim().orEmpty()
+            val placeholders = setOf(
+                "等待圖片識別...", "Waiting for image recognition...", "이미지 인식을 기다리는 중…"
+            )
+            // 若目前是空白、或仍是舊語系任一個 placeholder，就換成當前語系的
+            if (current.isBlank() || current in placeholders) {
+                target.text = localized
+            }
+        }
+
         when (currentLanguage) {
             LANG_ENGLISH -> {
                 btnTakePhoto.text = "Take Photo"
@@ -518,8 +530,8 @@ class MainActivity : AppCompatActivity() {
                 btnLanguage.text = "🌐 Language"
                 tvTitle.text = "Patient Verification System"
                 tvResultHeader.text = "Recognition Result"
-                if (textResult.text.isNullOrBlank()) textResult.text = "Waiting for image recognition..."
-                tvVerifyTitle.text = "Please manually verify the following patient information"  // ← 新增
+                setPlaceholderIfNeeded(textResult, "Waiting for image recognition...")  // ← 改這行
+                tvVerifyTitle.text = "Please manually verify the following patient information"
                 tvPlaceholder.text = "Please take or select medical order photo"
 
                 btnConfirmOK.text = "✅ Confirm"
@@ -548,8 +560,9 @@ class MainActivity : AppCompatActivity() {
 
                 tvTitle.text = "환자 신원 확인 시스템"
                 tvResultHeader.text = "인식 결과"
-                if (textResult.text.isNullOrBlank()) textResult.text = "이미지 인식을 기다리는 중…"
-                tvVerifyTitle.text = "아래 환자 정보를 확인해 주세요"  // ← 新增
+                setPlaceholderIfNeeded(textResult, "이미지 인식을 기다리는 중…")         // ← 改這行
+                tvVerifyTitle.text = "아래 환자 정보를 확인해 주세요"
+
                 tvPlaceholder.text = "의뢰서 사진을 촬영하거나 선택하세요"
 
                 btnConfirmOK.text = "✅ 확인"
@@ -577,8 +590,9 @@ class MainActivity : AppCompatActivity() {
                 btnLanguage.text = "🌐 語言"
                 tvTitle.text = "病患身份驗證系統"
                 tvResultHeader.text = "識別結果"
-                if (textResult.text.isNullOrBlank()) textResult.text = "等待圖片識別..."
-                tvVerifyTitle.text = "請人工核對下列病患資訊"  // ← 新增
+                setPlaceholderIfNeeded(textResult, "等待圖片識別...")                    // ← 改這行
+                tvVerifyTitle.text = "請人工核對下列病患資訊"
+
                 tvPlaceholder.text = "請拍攝或選擇醫令單"
 
                 btnConfirmOK.text = "✅ 確認"
