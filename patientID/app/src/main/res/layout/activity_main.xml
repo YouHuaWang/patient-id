@@ -44,7 +44,6 @@
             android:minWidth="0dp"
             android:minHeight="0dp" />
 
-
     </LinearLayout>
 
     <!-- Display selected or captured image -->
@@ -105,7 +104,6 @@
     </androidx.cardview.widget.CardView>
 
     <!-- Button Container -->
-
     <LinearLayout
         android:id="@+id/llButtons"
         android:layout_width="0dp"
@@ -116,7 +114,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
-        <!-- 改成一排兩顆：拍攝 / 選圖 -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="56dp"
@@ -129,7 +126,7 @@
                 android:layout_height="match_parent"
                 android:layout_weight="1"
                 android:text="📷 拍攝醫令單"
-                android:textSize="16sp" />
+                android:textSize="14sp" />
 
             <Space
                 android:layout_width="12dp"
@@ -142,10 +139,9 @@
                 android:layout_height="match_parent"
                 android:layout_weight="1"
                 android:text="🖼️ 選擇圖片"
-                android:textSize="16sp" />
+                android:textSize="14sp" />
         </LinearLayout>
 
-        <!-- 重新分析 按鈕保留在下一行 -->
         <Button
             android:id="@+id/btnReprocessImage"
             style="@style/AccentButton"
@@ -156,7 +152,6 @@
             android:layout_marginTop="8dp"
             android:visibility="gone" />
     </LinearLayout>
-
 
     <!-- Result Container -->
     <androidx.cardview.widget.CardView
@@ -189,9 +184,6 @@
                 android:padding="16dp"
                 android:background="#ECF0F1" />
 
-            <!-- Show OCR result -->
-            <!-- Show OCR result + Manual Verify Panel (both scrollable together) -->
-            <!-- Show OCR result + Manual Verify Panel (both scrollable together) -->
             <ScrollView
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
@@ -204,7 +196,7 @@
                     android:orientation="vertical"
                     android:paddingBottom="16dp">
 
-                    <!-- ✅ 先顯示：身份確認面板（移到最前面） -->
+                    <!-- 身份確認面板 -->
                     <LinearLayout
                         android:id="@+id/llVerifyPanel"
                         android:layout_width="match_parent"
@@ -223,57 +215,7 @@
                             android:textSize="16sp"
                             android:textStyle="bold"
                             android:textColor="#2C3E50"
-                            android:layout_marginBottom="8dp" />
-
-                        <!-- 固定格式的唯讀摘要（黑字） -->
-                        <LinearLayout
-                            android:id="@+id/llVerifySummary"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="vertical"
-                            android:paddingTop="6dp"
-                            android:paddingBottom="10dp">
-
-                            <TextView
-                                android:id="@+id/tvSummaryMrn"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="病歷號："
-                                android:textSize="15sp"
-                                android:textColor="#000000" />
-
-                            <TextView
-                                android:id="@+id/tvSummaryName"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="姓名："
-                                android:textSize="15sp"
-                                android:textColor="#000000" />
-
-                            <TextView
-                                android:id="@+id/tvSummaryGender"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="性別："
-                                android:textSize="15sp"
-                                android:textColor="#000000" />
-
-                            <TextView
-                                android:id="@+id/tvSummaryBirth"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="出生年月日："
-                                android:textSize="15sp"
-                                android:textColor="#000000" />
-
-                            <TextView
-                                android:id="@+id/tvSummaryExam"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="檢查項目："
-                                android:textSize="15sp"
-                                android:textColor="#000000" />
-                        </LinearLayout>
+                            android:layout_marginBottom="12dp" />
 
                         <!-- 病歷號 -->
                         <TextView
@@ -284,7 +226,7 @@
                             android:textSize="14sp"
                             android:textStyle="bold"
                             android:textColor="#2C3E50"
-                            android:layout_marginTop="12dp"
+                            android:layout_marginTop="8dp"
                             android:layout_marginBottom="4dp" />
                         <EditText
                             android:id="@+id/etMedicalId"
@@ -305,7 +247,7 @@
                             android:textSize="14sp"
                             android:textStyle="bold"
                             android:textColor="#2C3E50"
-                            android:layout_marginTop="6dp"
+                            android:layout_marginTop="8dp"
                             android:layout_marginBottom="4dp" />
                         <EditText
                             android:id="@+id/etName"
@@ -326,7 +268,7 @@
                             android:textSize="14sp"
                             android:textStyle="bold"
                             android:textColor="#2C3E50"
-                            android:layout_marginTop="12dp"
+                            android:layout_marginTop="8dp"
                             android:layout_marginBottom="4dp" />
                         <RadioGroup
                             android:id="@+id/rgGender"
@@ -346,7 +288,6 @@
                                 android:text="女"
                                 android:textColor="#2C3E50"
                                 android:layout_marginStart="16dp" />
-
                         </RadioGroup>
 
                         <!-- 出生年月日 -->
@@ -358,13 +299,13 @@
                             android:textSize="14sp"
                             android:textStyle="bold"
                             android:textColor="#2C3E50"
-                            android:layout_marginTop="12dp"
+                            android:layout_marginTop="8dp"
                             android:layout_marginBottom="4dp" />
                         <EditText
                             android:id="@+id/etBirth"
                             android:layout_width="match_parent"
                             android:layout_height="48dp"
-                            android:hint="未辨識（民國YYY/MM/DD）"
+                            android:hint="未辨識(民國YYY/MM/DD)"
                             android:singleLine="true"
                             android:padding="12dp"
                             android:textColor="#2C3E50"
@@ -379,7 +320,7 @@
                             android:textSize="14sp"
                             android:textStyle="bold"
                             android:textColor="#2C3E50"
-                            android:layout_marginTop="12dp"
+                            android:layout_marginTop="8dp"
                             android:layout_marginBottom="4dp" />
                         <EditText
                             android:id="@+id/etExam"
@@ -391,13 +332,11 @@
                             android:textColor="#2C3E50"
                             android:background="@android:drawable/edit_text" />
 
-
-
                         <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:orientation="horizontal"
-                            android:layout_marginTop="12dp">
+                            android:layout_marginTop="16dp">
 
                             <Button
                                 android:id="@+id/btnConfirmOK"
@@ -419,7 +358,7 @@
                         </LinearLayout>
                     </LinearLayout>
 
-                    <!-- 然後才是：識別結果文字區 -->
+                    <!-- 識別結果文字區 -->
                     <TextView
                         android:id="@+id/textResult"
                         android:layout_width="match_parent"
@@ -432,10 +371,6 @@
                         android:lineSpacingExtra="4dp" />
                 </LinearLayout>
             </ScrollView>
-
-
-
-
 
         </LinearLayout>
 
