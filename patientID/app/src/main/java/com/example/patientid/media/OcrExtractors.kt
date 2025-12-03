@@ -31,17 +31,50 @@ object OcrExtractors {
         val result = mutableMapOf<String, String>()
         val lines = fullText.split("\n").map { it.trim() }.filter { it.isNotEmpty() }
 
-        // 先抓基本欄位（沿用原本邏輯）
+        // 先抓基本欄位（病歷號 / 姓名 / 性別 / 生日）──維持原本寫法
         for (line in lines) {
             if (!result.containsKey("病歷號"))
-                Regex("病歷號[:：]?\\s*([A-Za-z0-9]+)").find(line)?.let { result["病歷號"] = it.groupValues[1] }
+                Regex("病歷號[:：]?\\s*([A-Za-z0-9]+)").find(line)
+                    ?.let { result["病歷號"] = it.groupValues[1] }
+
             if (!result.containsKey("姓名"))
-                Regex("姓名[:：]?\\s*([\\u4e00-\\u9fffA-Za-z]{2,10})").find(line)?.let { result["姓名"] = it.groupValues[1] }
+                Regex("姓名[:：]?\\s*([\\u4e00-\\u9fffA-Za-z]{2,10})").find(line)
+                    ?.let { result["姓名"] = it.groupValues[1] }
+
             if (!result.containsKey("性別"))
-                Regex("性別[:：]?\\s*(男|女|男性|女性)").find(line)?.let { result["性別"] = it.groupValues[1] }
+                Regex("性別[:：]?\\s*(男|女|男性|女性)").find(line)
+                    ?.let { result["性別"] = it.groupValues[1] }
+
             if (!result.containsKey("生日") && (line.contains("生日") || line.contains("出生")))
                 result["生日"] = line.replace(" ", "").replace("<<健保>>", "")
         }
+
+        // ★★ 新增：優先直接找「*編號後的英文」作為檢查項目 ★★
+        // 例如： "*340-0053  Rt Hand PA+Oblique"
+        val starLineRegex =
+            Regex("""[＊*]\s*\d{3,6}(?:-\d{3,4})?[A-Za-z]?\s+(.+)""")
+
+        val starMatch = lines.asSequence()
+            .mapNotNull { line -> starLineRegex.find(line) }
+            .firstOrNull()
+
+        if (starMatch != null) {
+            // group(1) 就是「*340-0053」後面的英文敘述
+            val examEnglish = starMatch.groupValues[1].trim()
+
+            val translated = ExamTranslator.translateExamPart(examEnglish)
+
+            // 只保留翻譯結果中的中文部分（ExamTranslator 可能回傳 "xxx -> 右手後前位和斜位"）
+            val onlyChinese = if (translated.contains("->")) {
+                translated.substringAfter("->").trim()
+            } else {
+                Regex("([\\u4e00-\\u9fff].+)").find(translated)?.value ?: translated
+            }
+
+            result["檢查項目"] = onlyChinese
+            return result          // ✅ 找到 *編號就直接回傳，不再用下面 Routine 區塊的推斷
+        }
+
 
         // 🔁 改抓「一般檢查 / Routine」底下的區段
         val section = collectRoutineSection(lines)
