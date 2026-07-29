@@ -23,9 +23,9 @@ The system utilizes optical character recognition (OCR) / image processing to au
 
 | Technology | Description |
 |---|---|
-| **Kotlin** | Primary programming language used for building the native Android application. |
-| **OpenAI API** | Powers the generative AI voice interaction and intelligent dialog workflow. |
-| **Android Studio** | Primary Integrated Development Environment (IDE) for app development and testing. |
+| **Kotlin** | Native Android Application Development |
+| **OpenAI API** | Generative AI Voice & Dialog Processing |
+| **Android Studio** | Development Environment |
 
 ## System Demo
 
