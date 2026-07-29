@@ -12,13 +12,6 @@ Patient identity verification in clinical settings is critical for medical safet
 
 The system utilizes optical character recognition (OCR) / image processing to automatically capture essential patient information—such as medical record numbers, names, and dates of birth—directly from physical medical order slips. Integrated with the OpenAI API, the application features an interactive generative AI voice module that guides patients through verbal identity checks and pre-examination confirmations. This dual-verification mechanism significantly improves verification accuracy while offering an accessible, barrier-free healthcare experience for visually impaired or low-literacy patients.
 
-## Key Features
-
-- **Automated Medical Order Parsing**: Uses image recognition to instantly extract patient metadata (Medical Record Number, Name, Date of Birth) from paper order slips.
-- **Generative AI Voice Assistance**: Integrates OpenAI API to facilitate interactive, conversational voice prompts for two-way identity and examination verification.
-- **Dual-Verification Safety Mechanism**: Combines OCR visual data extraction with real-time patient audio verification to minimize misidentification risks.
-- **Accessible & Inclusive Design**: Delivers a voice-guided user experience tailored for elderly, visually impaired, or reading-challenged patients.
-
 ## Technology Stack
 
 | Technology | Description |
@@ -26,6 +19,14 @@ The system utilizes optical character recognition (OCR) / image processing to au
 | **Kotlin** | Native Android Application Development |
 | **OpenAI API** | Generative AI Voice & Dialog Processing |
 | **Android Studio** | Development Environment |
+
+## System Interface & Workflow
+
+| Step | Visual Preview |
+| :--- | :---: |
+| **Language Selection** | <a href="img/language.jpg"><img src="img/language.jpg" width="180" alt="Language Selection"/></a> |
+| **Step 1: Medical Order OCR** | <a href="img/medical_order.jpg"><img src="img/medical_order.jpg" width="180" alt="Medical Order OCR"/></a> |
+| **Step 2: Voice Output & Validation** | <a href="img/result.jpg"><img src="img/result.jpg" width="180" alt="Voice Output & Validation"/></a> |
 
 ## System Demo
 
@@ -39,5 +40,5 @@ The system utilizes optical character recognition (OCR) / image processing to au
 
 ## Honors & Awards
 
-- 🥇 **Gold Medal** — 2025 Kaohsiung International Invention and Design EXPO (*KIDE*)
-- 🥉 **Bronze Prize** — 2025 Seoul International Invention Fair (*SIIF*)
+- 🥇 **Gold Medal** — 2025 Kaohsiung International Invention and Design EXPO (*KIDE 2025*)
+- 🥉 **Bronze Prize** — 2025 Seoul International Invention Fair (*SIIF 2025*)
